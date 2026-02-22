@@ -65,8 +65,13 @@ dev-tasks2/
 │       └── tasklist.md
 ├── .devcontainer/                # Dev Container 設定
 │   └── devcontainer.json
+├── .github/                      # GitHub 設定
+│   ├── workflows/
+│   │   └── ci.yml                # CI パイプライン（lint / typecheck / test / build）
+│   └── pull_request_template.md  # PR テンプレート
 ├── .husky/                       # Git フック（husky 管理）
-│   └── pre-commit
+│   └── pre-commit                # コミット前の lint-staged + typecheck
+# ※ prepare-commit-msg は .git/hooks/ に task start 実行時に動的インストールされる（バージョン管理外）
 ├── dist/                         # ビルド成果物（Git 管理外）
 ├── coverage/                     # テストカバレッジレポート（Git 管理外）
 ├── package.json
@@ -93,7 +98,7 @@ dev-tasks2/
 - `Renderer.ts`: ターミナルへの表示ロジック（テーブル・カラー・エラーフォーマット）
 
 **命名規則**:
-- コマンドファイル: `camelCase`（コマンド名と一致）例: `add.ts`, `list.ts`, `done.ts`
+- コマンドファイル: サブコマンド名と一致させる（単語1つ: `add.ts`, `list.ts`, `done.ts` / ネストコマンドは親コマンド名ファイルにまとめる: `config.ts`）
 - クラスファイル: `PascalCase` 例: `Renderer.ts`
 
 **依存関係**:
@@ -143,7 +148,21 @@ dev-tasks2/
 **役割**: プロジェクト全体で共有する型・インターフェース・エラークラスを一元管理。
 
 **配置ファイル**:
-- `index.ts`: `Task`, `TaskStatus`, `TaskPriority`, `Config`, `AppError`, `TaskFilter`, `CreateTaskInput`, `SyncResult` 等を export
+- `index.ts`: 全型・インターフェースを一元 export
+
+**主要な型定義**:
+
+| 型名 | 用途 | 主な使用箇所 |
+|------|------|-------------|
+| `Task` | タスクエンティティ | 全レイヤー |
+| `TaskStatus` | ステータスの列挙型 | `TaskManager`, `Renderer` |
+| `TaskPriority` | 優先度の列挙型 | `TaskManager`, `Renderer` |
+| `Config` | 設定エンティティ | `ConfigService`, `ConfigStorage` |
+| `AppError` | プロジェクト共通エラークラス | 全サービス, `Renderer` |
+| `IStorage` | `FileStorage` の抽象化インターフェース（SQLite 移行用） | `TaskManager`, `FileStorage` |
+| `TaskFilter` | `listTasks` のフィルタ条件 | `TaskManager`, `commands/list.ts` |
+| `CreateTaskInput` | タスク作成の入力型 | `TaskManager`, `commands/add.ts` |
+| `SyncResult` | GitHub 同期の結果型 | `GitHubService` |
 
 **命名規則**:
 - 型エクスポートは全て `index.ts` に集約（個別ファイルに分散させない）
@@ -160,6 +179,10 @@ dev-tasks2/
 
 **配置ファイル**:
 - `slug.ts`: タイトル文字列をブランチ名スラッグに変換する関数（`formatBranchName`）
+
+**追加ファイルの基準**:
+- 1ファイル1責務の純粋関数のみ配置
+- サービス固有のロジックは `utils/` に置かない（該当サービスファイル内に実装する）
 
 **命名規則**:
 - ファイル名: `camelCase`（動詞または用途を表す名詞）
@@ -183,7 +206,7 @@ dev-tasks2/
 tests/unit/
 ├── services/
 │   ├── TaskManager.test.ts     # CRUD・ステータス遷移・searchTasks
-│   ├── GitService.test.ts      # formatBranchName のスラッグ変換
+│   ├── GitService.test.ts      # isGitRepository・branchExists・createAndCheckoutBranch 等の Git 操作（スラッグ変換は slug.test.ts で検証）
 │   └── ConfigService.test.ts   # バリデーションロジック
 ├── storage/
 │   └── FileStorage.test.ts     # バックアップ・リストアのロジック
@@ -206,13 +229,15 @@ tests/integration/
 - ユニットテスト: `[テスト対象クラス名].test.ts`
 - 統合テスト: `[機能フロー名].test.ts`（kebab-case）
 
+> テストの記述方法（`describe` ブロック構造・モック方針等）は `docs/development-guidelines.md` の「テスト戦略」セクションを参照。
+
 ---
 
 ### `docs/`（ドキュメントディレクトリ）
 
 | ファイル | 内容 |
 |---------|------|
-| `ideas/initial-requirements.md` | 壁打ち・アイデアメモ（変更しない） |
+| `ideas/initial-requirements.md` | 壁打ち・アイデアメモ（追記可能。大幅編集・削除は行わない） |
 | `product-requirements.md` | プロダクト要求定義書（PRD） |
 | `functional-design.md` | 機能設計書 |
 | `architecture.md` | アーキテクチャ設計書 |
@@ -236,6 +261,8 @@ tests/integration/
 ```
 
 **命名規則**: `YYYYMMDD-kebab-case` 形式（例: `20260301-add-task-crud`）
+
+> `docs/ideas/` に新規メモを追加する場合の命名規則: `YYYYMMDD-[内容].md`（例: `20260301-github-sync-approach.md`）
 
 ---
 
@@ -269,6 +296,8 @@ tests/integration/
 | `vitest.config.ts` | Vitest テスト設定 |
 | `package.json` | 依存関係・npm スクリプト |
 | `CLAUDE.md` | Claude Code のプロジェクト指示 |
+| `.github/workflows/ci.yml` | CI パイプライン（lint / typecheck / test / build） |
+| `.github/pull_request_template.md` | PR テンプレート |
 
 ---
 
@@ -287,7 +316,7 @@ tests/integration/
 | 種別 | 規則 | 例 |
 |-----|------|-----|
 | クラスファイル | PascalCase + 役割接尾辞 | `TaskManager.ts`, `FileStorage.ts` |
-| コマンドファイル | camelCase | `add.ts`, `done.ts` |
+| コマンドファイル | サブコマンド名と一致 | `add.ts`, `done.ts`, `config.ts` |
 | ユーティリティ関数ファイル | camelCase | `slug.ts` |
 | テストファイル | `[対象].test.ts` | `TaskManager.test.ts` |
 | 型定義集約ファイル | `index.ts` | `src/types/index.ts` |
