@@ -237,6 +237,8 @@ task assign 1 @alice
 
 **受け入れ条件**:
 - [ ] `task config set github-token <token>` で Personal Access Token を設定でき、`.task/config.json`（パーミッション `600`）に保存される
+- [ ] `task config set github-owner <owner>` で対象リポジトリのオーナー名（ユーザー名または組織名）を設定できる
+- [ ] `task config set github-repo <repo>` で対象リポジトリ名を設定できる
 - [ ] GitHub 連携機能をトークン未設定の状態で使用すると、設定方法を案内するメッセージが表示される
 - [ ] `task sync` でローカルタスクと GitHub Issues の双方向同期ができる
 - [ ] `task import --github` で GitHub Issues からタスクをインポートできる
