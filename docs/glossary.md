@@ -20,10 +20,12 @@
 **関係**:
 - 1プロジェクト = 1タスクの集合（`.task/tasks.json`）
 - 1プロジェクト = 最大1つの GitHub リポジトリ（未設定でも使用可能）
+- タスクの集合は **ローカルの1ユーザーに帰属する**（MVP では個人ツール）
+- 同じリポジトリで作業する複数の開発者はそれぞれ独立したタスク集合を持つ
 
 ```
-~/project-a/  →  .task/tasks.json  (タスク集合A)  ←→  GitHub: org/project-a
-~/project-b/  →  .task/tasks.json  (タスク集合B)  ←→  （未設定・ローカル単独）
+田中のPC ~/project/  →  .task/tasks.json  (田中のタスク)  ←→  GitHub: org/project
+鈴木のPC ~/project/  →  .task/tasks.json  (鈴木のタスク)  ←→  GitHub: org/project
 ```
 
 ---
