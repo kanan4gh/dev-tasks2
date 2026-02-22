@@ -143,6 +143,8 @@ open ──(task start)──→ in_progress ──(task done)──→ complete
 - [ ] `task list` で ID・ステータス・タイトル・ブランチ名・作成日を含むテーブルが表示される
 - [ ] 1000 件のタスクでも 1 秒以内に表示される
 - [ ] `--status <status>` オプションでステータス絞り込みができる
+- [ ] GitHub 連携が設定済みの場合、テーブル先頭に `[GitHub: <owner>/<repo>]` を表示する
+- [ ] GitHub 連携が設定済みの場合、各タスク行に GitHub Issue 番号列（`Issue`）を追加表示する。Issue と紐付いていないタスクは `-` を表示する
 
 **優先度**: P0（必須）
 
@@ -171,6 +173,7 @@ task edit 1 --title "新しいタイトル"
 task edit 1 --priority high --due 2026-04-01
 
 # GitHub連携（P1）
+task config setup     # 対話式で GitHub 連携を初期設定
 task sync             # ローカルタスクとGitHub Issuesを同期
 task import --github  # GitHub IssuesからインポートGH
 
@@ -236,10 +239,13 @@ task assign 1 @alice
 開発者として、GitHub でも進捗を共有するために、ローカルタスクと GitHub Issues を同期できる機能が欲しい
 
 **受け入れ条件**:
-- [ ] `task config set github-token <token>` で Personal Access Token を設定でき、`.task/config.json`（パーミッション `600`）に保存される
-- [ ] `task config set github-owner <owner>` で対象リポジトリのオーナー名（ユーザー名または組織名）を設定できる
-- [ ] `task config set github-repo <repo>` で対象リポジトリ名を設定できる
-- [ ] GitHub 連携機能をトークン未設定の状態で使用すると、設定方法を案内するメッセージが表示される
+- [ ] `task config setup` を実行すると、GitHub Token・オーナー名・リポジトリ名を対話式プロンプトで一括設定できる
+- [ ] `task config setup` は各項目の入力後にバリデーションを行い、不正な値の場合は再入力を促す
+- [ ] `task config setup` 完了時に `[GitHub: <owner>/<repo>]` の形式で設定内容を表示する
+- [ ] `task config set github-token <token>` で Personal Access Token を個別設定でき、`.task/config.json`（パーミッション `600`）に保存される
+- [ ] `task config set github-owner <owner>` で対象リポジトリのオーナー名（ユーザー名または組織名）を個別設定できる
+- [ ] `task config set github-repo <repo>` で対象リポジトリ名を個別設定できる
+- [ ] GitHub 連携機能を未設定の状態で使用すると、`task config setup` の実行を案内するメッセージが表示される
 - [ ] `task sync` でローカルタスクと GitHub Issues の双方向同期ができる
 - [ ] `task import --github` で GitHub Issues からタスクをインポートできる
 - [ ] ネットワークエラー時は原因と対処法を含むエラーメッセージを表示する
