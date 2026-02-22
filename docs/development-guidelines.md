@@ -6,7 +6,7 @@
 
 | ツール | バージョン | インストール方法 |
 |--------|-----------|-----------------|
-| Node.js | v24.11.0 | devcontainer で自動セットアップ |
+| Node.js | v18以上（開発環境: v24.11.0） | devcontainer で自動セットアップ |
 | npm | 11.x | Node.js に同梱 |
 | Git | 2.20 以上 | OS 標準または `apt install git` |
 | Docker | 最新安定版 | Dev Container 利用時に必要 |
@@ -101,8 +101,9 @@ add.ts / list.ts / done.ts
 // ユーティリティ関数ファイル: camelCase
 slug.ts
 
-// テストファイル: [対象名].test.ts
-TaskManager.test.ts / slug.test.ts
+// テストファイル: tests/unit/<レイヤー>/[対象名].test.ts
+tests/unit/services/TaskManager.test.ts
+tests/unit/utils/slug.test.ts
 ```
 
 ---
@@ -138,12 +139,13 @@ import type { Task, TaskFilter } from '../types';
 
 ### コードフォーマット
 
-- **インデント**: 2 スペース（Prettier が自動整形）
-- **行の最大長**: 100 文字（Prettier 設定）
+**フォーマット設定**（`.prettierrc` で管理）:
+- **インデント**: 2 スペース
+- **行の最大長**: 100 文字
 - **セミコロン**: あり
 - **クォート**: シングルクォート
 
-フォーマットは Prettier に任せる。コミット前に `lint-staged` が自動実行する。
+フォーマットは Prettier に任せる。コミット前に `lint-staged` が自動実行する。設定を変更する場合は `.prettierrc` を編集し、チームで合意を取ること。
 
 ---
 
@@ -282,6 +284,20 @@ function syncWithGitHub(): Promise<SyncResult> {
   return githubService.fetchIssues()
     .then(issues => applyDiff(issues, fileStorage.load()))
     .then(result => { fileStorage.save(result.updatedTasks); return result.summary; });
+}
+```
+
+**並列実行には `Promise.all` を使用する**:
+
+```typescript
+// ✅ 良い例: 並列実行
+const [tasks, config] = await Promise.all([fileStorage.load(), configStorage.load()]);
+
+// ✅ 許容: コールバック API の Promise 化（promisify の代替）
+function readFileAsync(path: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    fs.readFile(path, 'utf-8', (err, data) => (err ? reject(err) : resolve(data)));
+  });
 }
 ```
 
@@ -461,6 +477,17 @@ Closes #[番号]
 **フレームワーク**: Vitest
 **カバレッジ目標**: 全体 80% 以上、`src/services/` は 90% 以上
 
+**カバレッジの自動強制**: `vitest.config.ts` に閾値を設定し、未達時にテストを失敗させる:
+
+```typescript
+coverage: {
+  thresholds: {
+    global: { lines: 80 },
+    'src/services/': { lines: 90 },
+  }
+}
+```
+
 **テスト構造（Given-When-Then パターン）**:
 
 ```typescript
@@ -552,12 +579,12 @@ describe('task-workflow', () => {
 
 以下のシナリオを手動で確認する:
 
-| シナリオ | 確認内容 |
-|---------|---------|
-| Git リポジトリありの環境で `task start` | ブランチが自動作成・チェックアウトされる |
-| Git リポジトリなしの環境で `task start` | 警告のみ表示されクラッシュしない |
-| `git commit` 後（フックインストール済み） | コミットメッセージに `[Task #<id>]` が付与される |
-| `task done --pr` | GitHub PR が正しく作成される（テスト用リポジトリ使用） |
+| シナリオ | 実行コマンド | 確認コマンド | 期待される結果 |
+|---------|------------|------------|--------------|
+| Git リポジトリありの環境で `task start` | `task start 1` | `git branch --show-current` | `feature/task-1-<slug>` が表示される |
+| Git リポジトリなしの環境で `task start` | `cd /tmp/no-git && task start 1` | 標準出力を目視確認 | `[Warning] Gitリポジトリが見つかりません。` が表示され終了コード 0 |
+| `git commit` 後（フックインストール済み） | `git commit -m "feat: テスト"` | `git log --oneline -1` | コミットメッセージ末尾に `[Task #<id>]` が付与されている |
+| `task done --pr` | `task done 1 --pr` | GitHub リポジトリの PR 一覧 | テスト用リポジトリに PR が正しく作成される |
 
 ---
 
@@ -634,7 +661,7 @@ npm run typecheck
 }
 ```
 
-### GitHub Actions（推奨）
+### GitHub Actions（必須）
 
 ```yaml
 # .github/workflows/ci.yml
