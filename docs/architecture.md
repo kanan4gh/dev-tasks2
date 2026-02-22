@@ -6,13 +6,13 @@
 
 | 技術 | バージョン |
 |------|-----------|
-| Node.js | v24.11.0 |
+| Node.js | v18以上（開発環境: v24.11.0） |
 | TypeScript | 5.x |
 | npm | 11.x |
 
 **選定理由**:
 
-- **Node.js v24.11.0** — 開発環境（devcontainer）で標準採用されている LTS バージョン。非同期 I/O に優れ、Git・ファイルシステム操作を伴う CLI に適する。npm エコシステムの充実により必要ライブラリの入手が容易。
+- **Node.js v18以上** — v18 以上を動作保証最小バージョンとする（開発環境: v24.11.0）。非同期 I/O に優れ、Git・ファイルシステム操作を伴う CLI に適する。v18 以上では標準 `fetch` API が使用可能なため、追加 HTTP ライブラリ不要。
 - **TypeScript 5.x** — 静的型付けによりコンパイル時にバグを検出。`Task` / `Config` 等の型定義を複数コンポーネント間で共有でき、保守性が高い。IDE 補完による開発効率向上。
 - **npm 11.x** — Node.js v24.11.0 に標準搭載。`package-lock.json` による依存関係の厳密な管理が可能。
 
@@ -27,6 +27,7 @@
 | chalk | ^5.0.0 | ターミナルカラー出力 | ステータス・優先度の色分けに使用。ES Modules 対応の v5 系を採用。 |
 | cli-table3 | ^0.6.0 | テーブル表示 | `task list` のボーダー付きテーブルを簡潔に実装できる。 |
 | inquirer | ^9.0.0 | 対話型プロンプト | 削除確認・フックインストール確認などの `y/N` プロンプトに使用。 |
+| (標準 fetch) | — | GitHub API 通信 | Node.js v18 で標準搭載。`node-fetch` は追加しない。 |
 
 ### 開発ツール
 
@@ -108,7 +109,7 @@ src/
 |-----------|----------|-------------|------|
 | タスクデータ | ローカルファイル | JSON 配列 | 特別なソフトウェア不要・Git 管理可能・MVP では十分なパフォーマンス |
 | 設定データ | ローカルファイル | JSON オブジェクト | 同上。パーミッション `600` でトークンを保護 |
-| 作業中タスク ID | ローカルファイル | プレーンテキスト | Git フック（シェルスクリプト）から読み取るため最小形式 |
+| 作業中タスク ID | ローカルファイル | プレーンテキスト | Git フック（シェルスクリプト）から読み取るため最小形式。`task start` で TaskManager が書き込み、`task done` / `task archive` で削除 |
 
 **保存パス**:
 ```
@@ -116,7 +117,7 @@ src/
 ├── tasks.json          # タスクデータ（パーミッション: 644）
 ├── tasks.json.bak      # 書き込み中のみ存在するバックアップ
 ├── config.json         # 設定データ（パーミッション: 600）
-└── .current-task       # 作業中タスク ID（task start で書き込み、task done で削除）
+└── .current-task       # 作業中タスク ID（task start で書き込み、task done / task archive で削除）
 ```
 
 ### バックアップ戦略
@@ -129,6 +130,18 @@ src/
 ### 将来の移行パス（SQLite）
 
 タスク数が 10,000 件を超えパフォーマンス問題が発生した場合、`FileStorage` の実装を `SQLiteStorage` に差し替える。`TaskManager` はストレージの実装詳細に依存しないため、インターフェースを維持したまま移行が可能。
+
+移行可能性の根拠として、以下の `IStorage` インターフェースを `src/types/index.ts` に定義する:
+
+```typescript
+// IStorage インターフェース（src/types/index.ts に定義）
+interface IStorage {
+  load(): Task[];
+  save(tasks: Task[]): void;
+  ensureDirectory(): void;
+}
+// FileStorage および将来の SQLiteStorage は IStorage を実装する
+```
 
 ---
 
@@ -199,7 +212,7 @@ src/
 
 - **フレームワーク**: Vitest
 - **対象**: `TaskManager`（CRUD・ステータス遷移）、`GitService`（`formatBranchName` スラッグ変換）、`ConfigService`（バリデーションロジック）、`Renderer`（テーブル・トリミング・カラー）、`FileStorage`（バックアップ・リストアロジック）
-- **カバレッジ目標**: 80% 以上（`vitest --coverage`）
+- **カバレッジ目標**: 全体 80% 以上・`src/services/` は 90% 以上（`vitest --coverage`）
 - **モック方針**: `FileStorage` は `vi.mock` でモック化。`simple-git` は `vi.mock` でモック化。GitHub API は `fetch` のモックで代替。
 
 ### 統合テスト
