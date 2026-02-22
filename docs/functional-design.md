@@ -81,7 +81,7 @@ interface Task {
 **制約**:
 - `id`: 正の整数。削除しても欠番のまま再利用しない
 - `title`: 必須、1〜200文字
-- `status`: `'open'` → `'in_progress'` → `'completed'` / `'archived'` の一方向遷移のみ
+- `status`: `'open'` → `'in_progress'` → `'completed'` の一方向遷移。`'archived'` へは `'open'` または `'completed'` からのみ遷移可能（`'in_progress'` → `'archived'` は不可）
 - `dueDate`: `YYYY-MM-DD` 形式。不正な日付は受け付けない
 
 ### エンティティ: Config

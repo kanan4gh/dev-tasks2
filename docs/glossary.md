@@ -58,6 +58,7 @@ stateDiagram-v2
 **ビジネスルール**:
 - 逆方向の遷移（再オープン）は MVP スコープ外
 - `archived` からの遷移は不可
+- `in_progress` → `archived` への直接遷移は不可（`task done` で `completed` に遷移してから `task archive` を使用する）
 
 **実装**: `src/types/index.ts`（`type TaskStatus`）、`src/services/TaskManager.ts`
 
@@ -229,6 +230,18 @@ git commit -m "feat(cli): --sort オプションを追加"
 
 ---
 
+### inquirer
+
+**定義**: Node.js 向けの対話型プロンプトライブラリ。ユーザーへの確認入力（y/N）を実装する。
+
+**本プロジェクトでの用途**: `task delete` の削除確認・`task start` のコミットフックインストール確認に使用。
+
+**バージョン**: ^9.0.0
+
+**関連ドキュメント**: [機能設計書](./functional-design.md)
+
+---
+
 ## 略語・頭字語
 
 ### CLI
@@ -367,6 +380,18 @@ CLIレイヤー (src/cli/)
 
 ---
 
+### ConfigService
+
+**定義**: 設定の読み書き・バリデーションを担うサービスクラス。
+
+**本プロジェクトでの位置づけ**: GitHub Token・オーナー名・リポジトリ名・デフォルトブランチを管理する。各キーのバリデーションロジックを実装する。
+
+**実装**: `src/services/ConfigService.ts`
+
+**依存**: `ConfigStorage`
+
+---
+
 ### FileStorage
 
 **定義**: `.task/tasks.json` への読み書きとバックアップを担うストレージクラス。
@@ -374,6 +399,31 @@ CLIレイヤー (src/cli/)
 **書き込みフロー**: 現在ファイルを `.bak` にコピー → 新データを書き込み → 成功したら `.bak` を削除（失敗したら `.bak` を復元）
 
 **実装**: `src/storage/FileStorage.ts`
+
+---
+
+### ConfigStorage
+
+**定義**: `.task/config.json` の読み書きとファイルパーミッション設定を担うストレージクラス。
+
+**本プロジェクトでの位置づけ**: `chmod 600` でファイルを保護し、GitHub Token をオーナーのみ読み書き可能な状態で保存する。
+
+**実装**: `src/storage/ConfigStorage.ts`
+
+---
+
+### IStorage
+
+**定義**: `FileStorage` および将来の `SQLiteStorage` が実装するストレージの抽象化インターフェース。
+
+**目的**: `TaskManager` をストレージ実装から切り離し、将来の SQLite 移行時にインターフェースを維持したまま差し替えを可能にする。
+
+**フィールド**:
+- `load(): Task[]`
+- `save(tasks: Task[]): void`
+- `ensureDirectory(): void`
+
+**実装**: `src/types/index.ts`
 
 ---
 
@@ -527,12 +577,12 @@ CLIレイヤー (src/cli/)
 - [作業中タスク](#作業中タスク-current-task) — ドメイン用語
 - [スペック駆動開発](#スペック駆動開発-spec-driven-development) — アーキテクチャ用語
 - [ステアリングファイル](#ステアリングファイル-steering-file) — アーキテクチャ用語
-- [同期](#同期-sync) — ドメイン用語
 
 ### た行
 - [タスク](#タスク-task) — ドメイン用語
 - [タスクステータス](#タスクステータス-task-status) — ドメイン用語
 - [タスク優先度](#タスク優先度-task-priority) — ドメイン用語
+- [同期](#同期-sync) — ドメイン用語
 - [Task](#taskエンティティ) — データモデル用語
 - [TaskManager](#taskmanager) — アーキテクチャ用語
 
@@ -549,11 +599,15 @@ CLIレイヤー (src/cli/)
 - [AppError](#apperror) — エラー・例外
 - [CLI](#cli) — 略語
 - [Commander.js](#commanderjs) — 技術用語
+- [ConfigService](#configservice) — アーキテクチャ用語
+- [ConfigStorage](#configstorage) — アーキテクチャ用語
 - [CRUD](#crud) — 略語
 - [FileStorage](#filestorage) — アーキテクチャ用語
 - [GitHubService](#githubservice) — アーキテクチャ用語
 - [GitService](#gitservice) — アーキテクチャ用語
 - [husky](#husky) — 技術用語
+- [inquirer](#inquirer) — 技術用語
+- [IStorage](#istorage) — アーキテクチャ用語
 - [KPI](#kpi) — 略語
 - [lint-staged](#lint-staged) — 技術用語
 - [MVP](#mvp) — 略語
