@@ -12,7 +12,7 @@
 
 **選定理由**:
 
-- **Node.js v18以上** — v18 以上を動作保証最小バージョンとする（開発環境: v24.11.0）。非同期 I/O に優れ、Git・ファイルシステム操作を伴う CLI に適する。v18 以上では標準 `fetch` API が使用可能なため、追加 HTTP ライブラリ不要。
+- **Node.js v20以上** — v18 は EOL のため v20 LTS 以上を動作保証最小バージョンとする（開発環境: v24.11.0）。非同期 I/O に優れ、Git・ファイルシステム操作を伴う CLI に適する。v18 以上では標準 `fetch` API が使用可能なため、追加 HTTP ライブラリ不要。
 - **TypeScript 5.x** — 静的型付けによりコンパイル時にバグを検出。`Task` / `Config` 等の型定義を複数コンポーネント間で共有でき、保守性が高い。IDE 補完による開発効率向上。
 - **npm 11.x** — Node.js v24.11.0 に標準搭載。`package-lock.json` による依存関係の厳密な管理が可能。
 
@@ -27,7 +27,7 @@
 | chalk | ^5.0.0 | ターミナルカラー出力 | ステータス・優先度の色分けに使用。ES Modules 対応の v5 系を採用。 |
 | cli-table3 | ^0.6.0 | テーブル表示 | `task list` のボーダー付きテーブルを簡潔に実装できる。 |
 | inquirer | ^9.0.0 | 対話型プロンプト | 削除確認・フックインストール確認などの `y/N` プロンプトに使用。 |
-| (標準 fetch) | — | GitHub API 通信 | Node.js v18 で標準搭載。`node-fetch` は追加しない。 |
+| (標準 fetch) | — | GitHub API 通信 | Node.js v20 以上で標準搭載。`node-fetch` は追加しない。 |
 
 ### 開発ツール
 
@@ -51,15 +51,17 @@
 │   src/cli/                    │   Commander.js + Renderer
 ├───────────────────────────────┤
 │   サービスレイヤー               │ ← ビジネスロジック
-│   src/services/               │   TaskManager / GitService / GitHubService / ConfigService
+│   src/services/               │   TaskManager / GlobalConfigService
+│                               │   GitService（P1） / GitHubService（P1） / ConfigService（P1）
 ├───────────────────────────────┤
 │   ストレージレイヤー             │ ← データ永続化
-│   src/storage/                │   FileStorage / ConfigStorage
+│   src/storage/                │   FileStorage / GlobalConfigStorage
+│                               │   ConfigStorage（P1）
 └───────────────────────────────┘
          ↓ 外部依存
-┌─────────────┬─────────────────┐
-│ .task/ (FS) │ GitHub REST API │
-└─────────────┴─────────────────┘
+┌──────────────────┬──────────────────────┐
+│ ~/.task/ (FS)    │ GitHub REST API（P1） │
+└──────────────────┴──────────────────────┘
 ```
 
 #### CLIレイヤー（`src/cli/`）
@@ -82,21 +84,23 @@
 ```
 src/
 ├── cli/
-│   ├── index.ts          # エントリーポイント・Commander.js セットアップ
-│   ├── commands/         # サブコマンド定義（add.ts / list.ts / start.ts ...）
-│   └── Renderer.ts       # ターミナル表示（テーブル・カラー）
+│   ├── index.ts               # エントリーポイント・Commander.js セットアップ
+│   ├── commands/              # サブコマンド定義（add.ts / list.ts / project.ts ...）
+│   └── Renderer.ts            # ターミナル表示（テーブル・カラー）
 ├── services/
-│   ├── TaskManager.ts    # タスク CRUD・ステータス管理
-│   ├── GitService.ts     # ブランチ操作・コミットフック
-│   ├── GitHubService.ts  # Issues 同期・PR 作成
-│   └── ConfigService.ts  # 設定の読み書き・バリデーション
+│   ├── TaskManager.ts         # タスク CRUD・ステータス管理
+│   ├── GlobalConfigService.ts # グローバル設定管理（activeProject 等）
+│   ├── GitService.ts          # ブランチ操作・コミットフック（P1）
+│   ├── GitHubService.ts       # Issues 同期・PR 作成（P1）
+│   └── ConfigService.ts       # プロジェクト別設定の読み書き・バリデーション（P1）
 ├── storage/
-│   ├── FileStorage.ts    # tasks.json の読み書き・バックアップ
-│   └── ConfigStorage.ts  # config.json の読み書き
+│   ├── FileStorage.ts         # tasks.json の読み書き・バックアップ（projects/<name>/ または inbox/ ディレクトリの作成も担当）
+│   ├── GlobalConfigStorage.ts # ~/.task/config.json の読み書き（~/.task/ ルートディレクトリの作成も担当）
+│   └── ConfigStorage.ts       # projects/<name>/config.json の読み書き（P1）
 ├── types/
-│   └── index.ts          # Task / Config / AppError 等の型定義
+│   └── index.ts               # Task / GlobalConfig / ProjectConfig / AppError 等の型定義
 └── utils/
-    └── slug.ts           # ブランチ名スラッグ変換ユーティリティ
+    └── slug.ts                # ブランチ名スラッグ変換ユーティリティ（P1）
 ```
 
 ---
@@ -107,23 +111,32 @@ src/
 
 | データ種別 | ストレージ | フォーマット | 理由 |
 |-----------|----------|-------------|------|
-| タスクデータ | ローカルファイル | JSON 配列 | 特別なソフトウェア不要・Git 管理可能・MVP では十分なパフォーマンス |
-| 設定データ | ローカルファイル | JSON オブジェクト | 同上。パーミッション `600` でトークンを保護 |
-| 作業中タスク ID | ローカルファイル | プレーンテキスト | Git フック（シェルスクリプト）から読み取るため最小形式。`task start` で TaskManager が書き込み、`task done` / `task archive` で削除 |
+| グローバル設定 | `~/.task/config.json` | JSON オブジェクト | どのディレクトリからでも参照できるグローバル配置。activeProject の管理に使用 |
+| タスクデータ | `~/.task/projects/<name>/tasks.json` または `~/.task/inbox/tasks.json` | JSON 配列 | 特別なソフトウェア不要・MVP では十分なパフォーマンス |
+| プロジェクト別設定（P1） | `~/.task/projects/<name>/config.json` | JSON オブジェクト | パーミッション `600` で GitHub Token を保護 |
+| 作業中タスク ID（P1） | Git リポジトリルートの `.taskcli-current` | プレーンテキスト | Git フック（シェルスクリプト）から読み取るため最小形式。`task start` で書き込み、`task done` で削除 |
 
 **保存パス**:
 ```
-.task/
-├── tasks.json          # タスクデータ（パーミッション: 644）
-├── tasks.json.bak      # 書き込み中のみ存在するバックアップ
-├── config.json         # 設定データ（パーミッション: 600）
-└── .current-task       # 作業中タスク ID（task start で書き込み、task done / task archive で削除）
+~/.task/
+├── config.json                    # グローバル設定（パーミッション: 644）
+├── inbox/
+│   ├── tasks.json                 # Inbox タスクデータ（パーミッション: 644）
+│   └── tasks.json.bak             # 書き込み中のみ存在するバックアップ
+└── projects/
+    └── <name>/
+        ├── tasks.json             # タスクデータ（パーミッション: 644）
+        ├── tasks.json.bak         # 書き込み中のみ存在するバックアップ
+        └── config.json            # プロジェクト別設定（パーミッション: 600、P1）
+
+<Git リポジトリルート>/
+└── .taskcli-current               # 作業中タスク ID（P1、.gitignore 追加推奨）
 ```
 
 ### バックアップ戦略
 
 - **タイミング**: `FileStorage.save()` を呼ぶたびに書き込み前に `.bak` を作成
-- **保存先**: `.task/tasks.json.bak`
+- **保存先**: 対象 `tasks.json` と同じディレクトリの `tasks.json.bak`
 - **世代管理**: 最新 1 世代のみ保持（常に直前の状態に復元可能）
 - **復元フロー**: 書き込み失敗時は `.bak` を `tasks.json` にリネームして自動復元
 
@@ -163,7 +176,7 @@ interface IStorage {
 |---------|------|------|
 | メモリ | 128MB | JSON 全件読み込みでも 10,000 件 ≈ 10MB 程度。Node.js ベースラインを含めて余裕を持たせる |
 | 起動 CPU | バースト可（制限なし） | CLI は単発起動のため常時 CPU を消費しない |
-| ディスク（.task/） | 50MB 以内 | 10,000 件 × 平均 1KB ≈ 10MB。.bak を含めても十分な余裕 |
+| ディスク（~/.task/） | 50MB 以内 | 10,000 件 × 平均 1KB ≈ 10MB。.bak を含めても十分な余裕 |
 
 ---
 
@@ -173,9 +186,12 @@ interface IStorage {
 
 - **暗号化**: GitHub Token はファイルパーミッション `600` で保護。暗号化は行わない（OS のユーザー分離に委ねる）
 - **アクセス制御**:
-  - `.task/config.json` → `chmod 600`（オーナーのみ読み書き）
-  - `.task/tasks.json` → `chmod 644`（オーナー読み書き、他は読み取り可）
-- **機密情報管理**: GitHub Token はコード・Git 履歴に含まれない。初回使用時に `.gitignore` への `.task/` 追記を案内。
+  - `~/.task/` ディレクトリ → `chmod 700`（オーナーのみアクセス可）
+  - `~/.task/inbox/` および `~/.task/projects/<name>/` → `chmod 700`（親ディレクトリと同等）
+  - `~/.task/config.json` → `chmod 644`（グローバル設定。機密情報を含まないため読み取り可）
+  - `~/.task/projects/<name>/config.json` → `chmod 600`（GitHub Token を含むため、オーナーのみ読み書き、P1）
+  - `tasks.json`（プロジェクト・Inbox 共通）→ `chmod 644`（オーナー読み書き、他は読み取り可）
+- **機密情報管理**: GitHub Token はコード・Git 履歴に含まれない。データはグローバルストレージ（`~/.task/`）に保存するため、プロジェクトの `.gitignore` 設定は不要（P1 の `.taskcli-current` ファイルのみ `.gitignore` への追記を案内）。
 
 ### 入力検証
 
@@ -211,7 +227,7 @@ interface IStorage {
 ### ユニットテスト
 
 - **フレームワーク**: Vitest
-- **対象**: `TaskManager`（CRUD・ステータス遷移）、`GitService`（`formatBranchName` スラッグ変換）、`ConfigService`（バリデーションロジック）、`Renderer`（テーブル・トリミング・カラー）、`FileStorage`（バックアップ・リストアロジック）
+- **対象**: `TaskManager`（CRUD・ステータス遷移）、`GlobalConfigService`（activeProject の取得・切り替え）、`GlobalConfigStorage`（config.json の読み書き・デフォルト値初期化）、`GitService`（`formatBranchName` スラッグ変換、P1）、`ConfigService`（バリデーションロジック、P1）、`Renderer`（テーブル・トリミング・カラー）、`FileStorage`（バックアップ・リストアロジック）
 - **カバレッジ目標**: 全体 80% 以上・`src/services/` は 90% 以上（`vitest --coverage`）
 - **モック方針**: `FileStorage` は `vi.mock` でモック化。`simple-git` は `vi.mock` でモック化。GitHub API は `fetch` のモックで代替。
 
@@ -222,6 +238,11 @@ interface IStorage {
 
 ### E2Eテスト（手動）
 
+**P0（v1.0 MVP）**:
+- **環境**: 任意のディレクトリ（Git 不要）
+- **シナリオ**: `task add` → `task start`（ステータス変更のみ）→ `task done` の一連フロー。Inbox/プロジェクト切り替え（`task project use` / `task inbox`）と `task move` の動作確認
+
+**P1（v1.1）**:
 - **環境**: ローカル Git リポジトリあり・なしの両環境
 - **シナリオ**: `task start` でブランチ自動作成 → `git commit` でタグ自動付与 → `task done --pr` で PR 作成（テスト用 GitHub リポジトリ使用）
 
@@ -235,7 +256,7 @@ interface IStorage {
 - **最小メモリ**: 512MB（Node.js 起動に必要な最低限）
 - **必要ディスク容量**: 50MB（本体 + データ）
 - **必要な外部依存**:
-  - Node.js v18 以上（開発環境: v24.11.0）
+  - Node.js v20 以上（開発環境: v24.11.0）
   - Git 2.20 以上（simple-git の動作要件）
   - インターネット接続（GitHub 連携機能のみ）
 

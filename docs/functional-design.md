@@ -4,8 +4,8 @@
 
 | バージョン | 対象機能 |
 |-----------|---------|
-| v1.0 MVP（P0） | タスク基本操作・ステータス管理・Git ブランチ連携・コミット自動タグ付け・テーブル表示 |
-| v1.1（P1） | 絞り込み・検索・優先度/期限管理・GitHub Issues 連携・PR 自動作成 |
+| v1.0 MVP（P0） | タスク基本操作・Inbox・プロジェクト管理・ステータス管理・テーブル表示 |
+| v1.1（P1） | Git ブランチ自動連携・コミット自動タグ付け・絞り込み・検索・タスク編集・優先度/期限管理・GitHub Issues 連携・PR 自動作成 |
 
 ※ P2（チーム機能・作業時間記録・テンプレート・カレンダー）は本設計書の対象外。
 
@@ -18,27 +18,35 @@ graph TB
     User[ユーザー]
     CLI[CLIレイヤー<br/>Commander.js]
     TaskMgr[TaskManager<br/>タスク管理]
-    GitSvc[GitService<br/>Git操作]
-    GHSvc[GitHubService<br/>GitHub API]
-    CfgSvc[ConfigService<br/>設定管理]
+    GitSvc[GitService<br/>Git操作 ※P1]
+    GHSvc[GitHubService<br/>GitHub API ※P1]
+    GlobalCfgSvc[GlobalConfigService<br/>グローバル設定管理]
+    CfgSvc[ConfigService<br/>プロジェクト設定管理]
     FileStore[FileStorage<br/>タスク永続化]
-    CfgStore[ConfigStorage<br/>設定永続化]
-    TasksJSON[(.task/tasks.json)]
-    ConfigJSON[(.task/config.json)]
-    GitRepo[(Gitリポジトリ)]
-    GitHubAPI[(GitHub REST API v3)]
+    GlobalCfgStore[GlobalConfigStorage<br/>グローバル設定永続化]
+    CfgStore[ConfigStorage<br/>プロジェクト設定永続化]
+    GlobalConfigJSON[(~/.task/config.json)]
+    InboxJSON[(~/.task/inbox/tasks.json)]
+    TasksJSON[(~/.task/projects/name/tasks.json)]
+    ProjConfigJSON[(~/.task/projects/name/config.json)]
+    GitRepo[(Gitリポジトリ ※P1)]
+    GitHubAPI[(GitHub REST API v3 ※P1)]
 
     User --> CLI
     CLI --> TaskMgr
     CLI --> GitSvc
     CLI --> GHSvc
+    CLI --> GlobalCfgSvc
     CLI --> CfgSvc
     TaskMgr --> FileStore
+    GlobalCfgSvc --> GlobalCfgStore
     CfgSvc --> CfgStore
     GHSvc --> GitHubAPI
     GitSvc --> GitRepo
     FileStore --> TasksJSON
-    CfgStore --> ConfigJSON
+    FileStore --> InboxJSON
+    GlobalCfgStore --> GlobalConfigJSON
+    CfgStore --> ProjConfigJSON
 ```
 
 ---
@@ -53,7 +61,7 @@ graph TB
 | GitHub連携 | GitHub REST API v3 | PAT認証で手軽に利用可能 |
 | テスト | Vitest | TypeScriptネイティブ対応、高速 |
 | パッケージマネージャー | npm | プロジェクト標準 |
-| ランタイム | Node.js v18以上 | LTS・クロスプラットフォーム対応。開発環境は v24.11.0 を使用。 |
+| ランタイム | Node.js v20以上 | v18 は EOL のため v20 LTS 以上を必須とする。開発環境は v24.11.0 を使用。 |
 
 ---
 
@@ -84,26 +92,50 @@ interface Task {
 - `status`: `'open'` → `'in_progress'` → `'completed'` の一方向遷移。`'archived'` へは `'open'` または `'completed'` からのみ遷移可能（`'in_progress'` → `'archived'` は不可）
 - `dueDate`: `YYYY-MM-DD` 形式。不正な日付は受け付けない
 
-### エンティティ: Config
+### エンティティ: GlobalConfig
+
+グローバル設定（`~/.task/config.json`）。ユーザー全体に共通する設定を管理する。
 
 ```typescript
-interface Config {
-  githubToken: string | null;  // GitHub Personal Access Token
-  githubOwner: string | null;  // GitHubリポジトリのオーナー名
-  githubRepo: string | null;   // GitHubリポジトリ名
-  defaultBranch: string;       // デフォルトベースブランチ（デフォルト: 'main'）
+interface GlobalConfig {
+  activeProject: string | null;  // アクティブプロジェクト名（null = Inbox モード）
+}
+```
+
+### エンティティ: ProjectConfig
+
+プロジェクト別設定（`~/.task/projects/<name>/config.json`）。※ P1 で利用する GitHub 連携設定。
+
+```typescript
+interface ProjectConfig {
+  githubToken: string | null;  // GitHub Personal Access Token（P1）
+  githubOwner: string | null;  // GitHubリポジトリのオーナー名（P1）
+  githubRepo: string | null;   // GitHubリポジトリ名（P1）
+  defaultBranch: string;       // デフォルトベースブランチ（P1、デフォルト: 'main'）
 }
 ```
 
 ### ファイル構造
 
 ```
-.task/
-├── tasks.json      # タスクデータ（配列）
-└── config.json     # 設定データ（オブジェクト）
+~/.task/
+├── config.json                    # グローバル設定（activeProject 等）
+├── inbox/
+│   └── tasks.json                 # Inbox タスクデータ（配列）
+└── projects/
+    └── <name>/
+        ├── tasks.json             # タスクデータ（配列）
+        └── config.json            # プロジェクト別設定（GitHub Token 等、chmod 600、P1）
 ```
 
-**tasks.json の例**:
+**~/.task/config.json の例**:
+```json
+{
+  "activeProject": "my-app"
+}
+```
+
+**~/.task/projects/my-app/tasks.json の例**:
 ```json
 [
   {
@@ -114,13 +146,13 @@ interface Config {
     "priority": "high",
     "branch": "feature/task-1-user-authentication",
     "dueDate": "2026-03-31",
-    "createdAt": "2026-02-22T10:00:00Z",
-    "updatedAt": "2026-02-22T11:30:00Z"
+    "createdAt": "2026-02-26T10:00:00Z",
+    "updatedAt": "2026-02-26T11:30:00Z"
   }
 ]
 ```
 
-**config.json の例**:
+**~/.task/projects/my-app/config.json の例（P1）**:
 ```json
 {
   "githubToken": null,
@@ -148,19 +180,36 @@ class CLI {
 }
 ```
 
-**サブコマンド一覧**:
+**サブコマンド一覧（P0: v1.0 MVP）**:
 
 | コマンド | 引数 / オプション | 処理概要 |
 |---------|----------------|---------|
-| `task add <title>` | `--priority`, `--due`, `--description` | タスク作成 |
-| `task list` | `--status`, `--priority`, `--sort` | タスク一覧表示 |
+| `task add <title>` | `--description` | タスク作成 |
+| `task list` | `--status <status>`, `--inbox` | タスク一覧表示（`--status` でステータス絞り込み、`--inbox` で inbox のタスクを表示） |
 | `task show <id>` | — | タスク詳細表示 |
-| `task start <id>` | — | ステータスを`in_progress`に変更 + ブランチ作成 + hookインストール |
-| `task done <id>` | `--pr` | ステータスを`completed`に変更（`--pr`でPR作成） |
+| `task start <id>` | — | ステータスを `in_progress` に変更 |
+| `task done <id>` | — | ステータスを `completed` に変更 |
 | `task delete <id>` | — | タスク削除（確認プロンプト付き） |
-| `task archive <id>` | — | ステータスを`archived`に変更 |
+| `task archive <id>` | — | ステータスを `archived` に変更 |
+| `task project create <name>` | — | プロジェクト作成 |
+| `task project list` | — | プロジェクト一覧表示（タスク数付き） |
+| `task project use <name>` | — | アクティブプロジェクトを切り替え |
+| `task project remove <name>` | — | プロジェクト削除（確認プロンプト付き） |
+| `task move <id> <project>` | — | タスクを別プロジェクト（または `inbox`）に移動 |
+| `task inbox` | — | アクティブプロジェクトを解除し Inbox モードに切り替え |
+
+**サブコマンド一覧（P1: v1.1）**:
+
+| コマンド | 引数 / オプション | 処理概要 |
+|---------|----------------|---------|
+| `task add <title>` | `--priority`, `--due` | P0 に優先度・期限オプション追加 |
+| `task list` | `--priority`, `--sort` | P0 の `--status` / `--inbox` に加え、優先度絞り込み・ソートを追加 |
+| `task start <id>` | — | ステータス変更 + Git ブランチ作成 + コミットフックインストール |
+| `task done <id>` | `--pr` | ステータス変更（`--pr` で PR 作成） |
+| `task edit <id>` | — | タスク属性の編集 |
 | `task search <keyword>` | — | タイトル・説明の全文検索 |
-| `task config set <key> <value>` | — | 設定値を保存 |
+| `task config setup` | — | 対話式ウィザードで GitHub Token・Owner・Repo を一括設定 |
+| `task config set <key> <value>` | — | プロジェクト別設定値を個別保存（GitHub Token 等） |
 | `task sync` | — | GitHub Issues と双方向同期 |
 | `task import --github` | — | GitHub Issues からインポート |
 
@@ -221,6 +270,7 @@ class GitService {
   push(branch: string): Promise<void>;
   formatBranchName(taskId: number, title: string): string;
   // 例: formatBranchName(1, "ユーザー認証機能の実装") → "feature/task-1-user-authentication"
+  // 内部実装: src/utils/slug.ts の slugify() を使用
 }
 ```
 
@@ -241,18 +291,19 @@ class GitService {
 | `"Add OAuth 2.0 Support"` | `"add-oauth-2-0-support"` |
 | `"user authentication"` | `"user-authentication"` |
 
-**コミットフック仕様** (`.git/hooks/prepare-commit-msg`):
+**コミットフック仕様** (`.git/hooks/prepare-commit-msg`)（P1）:
 ```bash
 #!/bin/sh
 # TaskCLI: auto-append task number
-TASK_ID=$(cat .task/.current-task 2>/dev/null)
+TASK_ID=$(cat "$(git rev-parse --show-toplevel)/.taskcli-current" 2>/dev/null)
 if [ -n "$TASK_ID" ]; then
   echo "" >> "$1"
   echo "[Task #$TASK_ID]" >> "$1"
 fi
 ```
-- `task start <id>` 実行時に `.task/.current-task` にタスクIDを保存
-- `task done <id>` 実行時に `.task/.current-task` を削除
+- `task start <id>` 実行時に Git リポジトリルートの `.taskcli-current` にタスクIDを保存（P1）
+- `task done <id>` 実行時に `.taskcli-current` を削除（P1）
+- `.taskcli-current` は `.gitignore` に追加する（P1）
 
 ---
 
@@ -288,19 +339,35 @@ Task #{task.id}
 
 ---
 
-### ConfigService (`src/services/ConfigService.ts`)
+### GlobalConfigService (`src/services/GlobalConfigService.ts`)
 
-**責務**: 設定の読み書き・バリデーション
+**責務**: グローバル設定（`~/.task/config.json`）の読み書き・アクティブプロジェクト管理
 
 ```typescript
-class ConfigService {
-  get<K extends keyof Config>(key: K): Config[K];
-  set<K extends keyof Config>(key: K, value: Config[K]): void;  // バリデーション後に保存
-  getAll(): Config;
+class GlobalConfigService {
+  getActiveProject(): string | null;         // アクティブプロジェクト名。null = Inbox モード
+  setActiveProject(name: string | null): void;  // null を渡すと Inbox モードに切り替え
+  getAll(): GlobalConfig;
 }
 ```
 
-**バリデーション仕様**:
+**依存関係**: `GlobalConfigStorage`
+
+---
+
+### ConfigService (`src/services/ConfigService.ts`)
+
+**責務**: プロジェクト別設定（`~/.task/projects/<name>/config.json`）の読み書き・バリデーション（P1）
+
+```typescript
+class ConfigService {
+  get<K extends keyof ProjectConfig>(key: K): ProjectConfig[K];
+  set<K extends keyof ProjectConfig>(key: K, value: ProjectConfig[K]): void;  // バリデーション後に保存
+  getAll(): ProjectConfig;
+}
+```
+
+**バリデーション仕様**（P1）:
 
 | キー | バリデーション |
 |-----|-------------|
@@ -313,15 +380,34 @@ class ConfigService {
 
 ---
 
+### GlobalConfigStorage (`src/storage/GlobalConfigStorage.ts`)
+
+**責務**: `~/.task/config.json` の読み書き
+
+```typescript
+class GlobalConfigStorage {
+  load(): GlobalConfig;
+  save(config: GlobalConfig): void;
+  ensureDirectory(): void;  // ~/.task/ ディレクトリを作成
+}
+```
+
+**デフォルト値**: `activeProject: null`（初回起動時は Inbox モード）
+
+---
+
 ### FileStorage (`src/storage/FileStorage.ts`)
 
-**責務**: `.task/tasks.json` の読み書き・バックアップ
+**責務**: タスクデータ（`~/.task/projects/<name>/tasks.json` または `~/.task/inbox/tasks.json`）の読み書き・バックアップ
+
+ストレージパスはコンストラクタで受け取り、GlobalConfigService が解決したアクティブプロジェクトに基づいて CLI 層から渡す。
 
 ```typescript
 class FileStorage {
+  constructor(filePath: string) {}  // 例: "~/.task/projects/my-app/tasks.json"
   load(): Task[];
-  save(tasks: Task[]): void;      // 書き込み前にバックアップを作成
-  ensureDirectory(): void;        // .task/ ディレクトリを作成
+  save(tasks: Task[]): void;        // 書き込み前にバックアップを作成
+  ensureDirectory(): void;          // 親ディレクトリ（~/.task/projects/<name>/）を作成
 }
 ```
 
@@ -334,12 +420,13 @@ class FileStorage {
 
 ### ConfigStorage (`src/storage/ConfigStorage.ts`)
 
-**責務**: `.task/config.json` の読み書き
+**責務**: `~/.task/projects/<name>/config.json` の読み書き（P1）
 
 ```typescript
 class ConfigStorage {
-  load(): Config;
-  save(config: Config): void;  // ファイルパーミッションを 600 に設定
+  constructor(filePath: string) {}  // 例: "~/.task/projects/my-app/config.json"
+  load(): ProjectConfig;
+  save(config: ProjectConfig): void;  // ファイルパーミッションを 600 に設定
 }
 ```
 
@@ -362,6 +449,37 @@ class Renderer {
 
 ## ユースケース図
 
+### UC-0: アクティブプロジェクト解決フロー
+
+すべてのコマンド実行前に共通で走るフロー。タスクの保存先（プロジェクトまたは Inbox）を決定する。
+
+```mermaid
+sequenceDiagram
+    participant CLI
+    participant GlobalConfigService
+    participant GlobalConfigStorage
+    participant FileStorage
+
+    CLI->>GlobalConfigService: getActiveProject()
+    GlobalConfigService->>GlobalConfigStorage: load()
+    GlobalConfigStorage-->>GlobalConfigService: GlobalConfig
+    alt activeProject が設定されている
+        GlobalConfigService-->>CLI: projectName
+        CLI->>FileStorage: new FileStorage("~/.task/projects/<name>/tasks.json")
+        Note over CLI,FileStorage: 以降のタスク操作はプロジェクトのストレージを使用
+    else activeProject が null（Inbox モード）
+        GlobalConfigService-->>CLI: null
+        CLI->>FileStorage: new FileStorage("~/.task/inbox/tasks.json")
+        Note over CLI,FileStorage: 以降のタスク操作は Inbox のストレージを使用
+    end
+```
+
+**ヘッダー表示ルール**（`task list` 実行時）:
+- アクティブプロジェクトあり → `[Project: <name>]`
+- Inbox モード → `[Inbox]`
+
+---
+
 ### UC-1: task add（タスク作成）
 
 ```mermaid
@@ -371,9 +489,9 @@ sequenceDiagram
     participant TaskManager
     participant FileStorage
 
-    User->>CLI: task add "タスク名" --priority high
-    CLI->>CLI: 入力バリデーション（title長・priority値）
-    CLI->>TaskManager: createTask({ title, priority })
+    User->>CLI: task add "タスク名" --description "説明文"
+    CLI->>CLI: 入力バリデーション（title長）
+    CLI->>TaskManager: createTask({ title, description })
     TaskManager->>FileStorage: load()
     FileStorage-->>TaskManager: Task[]
     TaskManager->>TaskManager: nextId() で ID を採番
@@ -386,7 +504,32 @@ sequenceDiagram
 
 ---
 
-### UC-2: task start（タスク開始 + ブランチ作成）
+### UC-2: task start（タスク開始）
+
+#### P0: ステータス変更のみ（v1.0 MVP）
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI
+    participant TaskManager
+    participant FileStorage
+
+    User->>CLI: task start 1
+    CLI->>TaskManager: getTask(1)
+    TaskManager->>FileStorage: load()
+    FileStorage-->>TaskManager: Task[]
+    TaskManager-->>CLI: Task (status: open)
+    CLI->>TaskManager: startTask(1)
+    TaskManager->>FileStorage: save(tasks)
+    FileStorage-->>TaskManager: 成功
+    TaskManager-->>CLI: 更新した Task (status: in_progress)
+    CLI-->>User: "タスク #1 を開始しました"
+```
+
+**Inbox モードでの動作**: Inbox のタスクに `task start` を実行した場合、ステータスは `in_progress` に更新するが、「プロジェクトに移動してから Git 連携を使用してください（P1）」という情報メッセージを合わせて表示する。
+
+#### P1: Git ブランチ作成 + コミットフックインストール（v1.1）
 
 ```mermaid
 sequenceDiagram
@@ -426,7 +569,7 @@ sequenceDiagram
                 GitService-->>CLI: 成功
             else フック導入済み
                 GitService-->>CLI: true
-                Note over CLI,GitService: .task/.current-task を taskId で上書き
+                Note over CLI,GitService: .taskcli-current を taskId で上書き
             end
         end
     else Gitリポジトリなし
@@ -538,23 +681,56 @@ sequenceDiagram
 
 ### task list のテーブル表示
 
+**P0（v1.0 MVP）表示**:
 ```
- ID  Status       Priority  Title                                  Branch                              Due
- ─── ──────────── ──────── ────────────────────────────────────── ─────────────────────────────────── ──────────
-  1  in_progress  high      ユーザー認証機能の実装                  feature/task-1-user-authentication  2026-03-31
-  2  open         medium    データエクスポート機能                   -                                   -
-  3  completed    low       初期セットアップ                         feature/task-3-initial-setup        -
+[Project: my-app]
+ ID  Status       Title
+ ─── ──────────── ────────────────────────────────────────
+  1  in_progress  ユーザー認証機能の実装
+  2  open         データエクスポート機能
+  3  completed    初期セットアップ
+
+[Inbox]  ← アクティブプロジェクト未設定時
+ ID  Status       Title
+ ─── ──────────── ────────────────────────────────────────
+  1  open         買い物リスト作成
+```
+
+**P1（v1.1）追加列**:
+```
+[Project: my-app]
+ ID  Status       Priority  Title                            Branch                              Due
+ ─── ──────────── ──────── ──────────────────────────────── ─────────────────────────────────── ──────────
+  1  in_progress  high      ユーザー認証機能の実装            feature/task-1-user-authentication  2026-03-31
+  2  open         medium    データエクスポート機能             -                                   -
+  3  completed    low       初期セットアップ                   feature/task-3-initial-setup        -
 ```
 
 **表示項目**:
-| 列 | 説明 | フォーマット |
-|---|---|---|
-| ID | タスクID | 右寄せ数値 |
-| Status | ステータス | カラーコード付き文字列 |
-| Priority | 優先度 | カラーコード付き文字列（P1 以降で表示） |
-| Title | タスク名 | 最大40文字（超過は`…`で省略） |
-| Branch | ブランチ名 | 最大35文字（超過は`…`で省略）、なければ `-` |
-| Due | 期限 | `YYYY-MM-DD`、なければ `-`、期限切れは赤 |
+| 列 | バージョン | 説明 | フォーマット |
+|---|---|---|---|
+| ヘッダー行 | P0 | `[Project: <name>]` または `[Inbox]` | テーブル上部に常時表示 |
+| ID | P0 | タスクID | 右寄せ数値 |
+| Status | P0 | ステータス | カラーコード付き文字列 |
+| Title | P0 | タスク名 | 最大40文字（超過は`…`で省略） |
+| Priority | P1 | 優先度 | カラーコード付き文字列 |
+| Branch | P1 | ブランチ名 | 最大35文字（超過は`…`で省略）、なければ `-` |
+| Due | P1 | 期限 | `YYYY-MM-DD`、なければ `-`、期限切れは赤 |
+
+### task project list の表示
+
+```
+* my-app     5 tasks (2 in_progress)    ← * はアクティブプロジェクト
+  personal   3 tasks (0 in_progress)
+─────────────────────────────────────
+  [Inbox]    1 task
+```
+
+- アクティブプロジェクトは `*` で強調表示
+- 各プロジェクトのタスク総数と `in_progress` 件数を表示
+- Inbox のタスク数をフッターに表示
+
+---
 
 ### カラーコーディング
 
@@ -612,6 +788,7 @@ class AppError extends Error {
 | GitHub Token 未設定 | 処理を中断 | `[Error] GitHub Token が未設定です。\n  原因: GitHub 連携機能には設定が必要です。\n  対処: task config set github-token <token> で設定してください。` |
 | GitHub API エラー | 処理を中断 | `[Error] GitHub API リクエストが失敗しました。\n  原因: <HTTPステータスコード> <メッセージ>\n  対処: Token の権限と有効期限を確認してください。` |
 | ネットワークタイムアウト | 処理を中断 | `[Error] ネットワークタイムアウト（5秒）が発生しました。\n  原因: GitHub API に接続できません。\n  対処: インターネット接続を確認してください。` |
+| Inbox タスクへの `task start`（P1 機能の案内） | ステータスのみ更新、情報メッセージ表示 | `[Info] タスク #1 を開始しました。Git 連携（P1）を使用する場合は task move 1 <project> でプロジェクトに移動してください。` |
 | ファイル読み込み失敗 | 空データで初期化し継続 | `[Warning] タスクデータが見つかりません。新規作成します。` |
 | ファイル書き込み失敗 | .bak から復元し処理中断 | `[Error] タスクデータの保存に失敗しました。\n  原因: ディスクの空き容量が不足している可能性があります。\n  対処: ディスク容量を確認してください。` |
 
@@ -628,9 +805,10 @@ class AppError extends Error {
 
 ## セキュリティ設計
 
-- **config.json のパーミッション**: 書き込み後 `fs.chmodSync(path, 0o600)` を実行し、オーナーのみ読み書き可能にする
-- **`.task/` の `.gitignore` 追加**: `task init`（または初回 `task add`）時に `.gitignore` に `.task/` を追記するか確認プロンプトを表示する
-- **コマンドインジェクション防止**: `simple-git` の API を使用し、シェルコマンドの文字列結合を行わない。GitHub API リクエストのパラメータは `encodeURIComponent` でエスケープする
+- **`~/.task/` のパーミッション**: `GlobalConfigStorage.ensureDirectory()` 実行時に `fs.chmodSync("~/.task/", 0o700)` を設定し、オーナーのみアクセス可能にする
+- **プロジェクト設定ファイルのパーミッション（P1）**: `ConfigStorage.save()` 後に `fs.chmodSync(path, 0o600)` を実行し、オーナーのみ読み書き可能にする（`~/.task/projects/<name>/config.json` に GitHub Token を格納するため）
+- **`.taskcli-current` の `.gitignore` 追加（P1）**: `task start` 実行時に Git リポジトリルートの `.gitignore` に `.taskcli-current` を追記するか確認プロンプトを表示する
+- **コマンドインジェクション防止（P1）**: `simple-git` の API を使用し、シェルコマンドの文字列結合を行わない。GitHub API リクエストのパラメータは `encodeURIComponent` でエスケープする
 
 ---
 

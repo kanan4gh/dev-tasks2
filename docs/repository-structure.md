@@ -8,38 +8,45 @@ dev-tasks2/
 │   ├── cli/                      # CLIレイヤー（ユーザー入力・表示）
 │   │   ├── index.ts              # エントリーポイント・Commander.js セットアップ
 │   │   ├── commands/             # サブコマンド定義
-│   │   │   ├── add.ts
-│   │   │   ├── list.ts
-│   │   │   ├── show.ts
-│   │   │   ├── start.ts
-│   │   │   ├── done.ts
-│   │   │   ├── delete.ts
-│   │   │   ├── archive.ts
-│   │   │   ├── search.ts
-│   │   │   ├── sync.ts
-│   │   │   ├── import.ts
-│   │   │   └── config.ts
+│   │   │   ├── add.ts              # P0
+│   │   │   ├── list.ts             # P0
+│   │   │   ├── show.ts             # P0
+│   │   │   ├── start.ts            # P0
+│   │   │   ├── done.ts             # P0
+│   │   │   ├── delete.ts           # P0
+│   │   │   ├── archive.ts          # P0
+│   │   │   ├── project.ts          # P0: project create/list/use/remove
+│   │   │   ├── move.ts             # P0
+│   │   │   ├── inbox.ts            # P0
+│   │   │   ├── search.ts           # P1
+│   │   │   ├── sync.ts             # P1
+│   │   │   ├── import.ts           # P1
+│   │   │   └── config.ts           # P1
 │   │   └── Renderer.ts           # ターミナル表示（テーブル・カラー）
 │   ├── services/                 # サービスレイヤー（ビジネスロジック）
 │   │   ├── TaskManager.ts        # タスク CRUD・ステータス管理
-│   │   ├── GitService.ts         # ブランチ操作・コミットフック
-│   │   ├── GitHubService.ts      # GitHub Issues 同期・PR 作成
-│   │   └── ConfigService.ts      # 設定の読み書き・バリデーション
+│   │   ├── GlobalConfigService.ts # グローバル設定管理（activeProject 等）
+│   │   ├── GitService.ts         # ブランチ操作・コミットフック（P1）
+│   │   ├── GitHubService.ts      # GitHub Issues 同期・PR 作成（P1）
+│   │   └── ConfigService.ts      # プロジェクト別設定の読み書き・バリデーション（P1）
 │   ├── storage/                  # ストレージレイヤー（データ永続化）
 │   │   ├── FileStorage.ts        # tasks.json の読み書き・バックアップ
-│   │   └── ConfigStorage.ts      # config.json の読み書き
+│   │   ├── GlobalConfigStorage.ts # ~/.task/config.json の読み書き
+│   │   └── ConfigStorage.ts      # projects/<name>/config.json の読み書き（P1）
 │   ├── types/                    # 型定義
-│   │   └── index.ts              # Task / Config / AppError 等
+│   │   └── index.ts              # Task / GlobalConfig / ProjectConfig / AppError 等
 │   └── utils/                    # 汎用ユーティリティ
-│       └── slug.ts               # ブランチ名スラッグ変換
+│       └── slug.ts               # ブランチ名スラッグ変換（P1）
 ├── tests/                        # テストコード
 │   ├── unit/                     # ユニットテスト
 │   │   ├── services/
 │   │   │   ├── TaskManager.test.ts
-│   │   │   ├── GitService.test.ts
-│   │   │   └── ConfigService.test.ts
+│   │   │   ├── GlobalConfigService.test.ts # P0
+│   │   │   ├── GitService.test.ts          # P1
+│   │   │   └── ConfigService.test.ts       # P1
 │   │   ├── storage/
-│   │   │   └── FileStorage.test.ts
+│   │   │   ├── FileStorage.test.ts
+│   │   │   └── GlobalConfigStorage.test.ts # P0
 │   │   ├── cli/
 │   │   │   └── Renderer.test.ts
 │   │   └── utils/
@@ -98,7 +105,7 @@ dev-tasks2/
 - `Renderer.ts`: ターミナルへの表示ロジック（テーブル・カラー・エラーフォーマット）
 
 **命名規則**:
-- コマンドファイル: サブコマンド名と一致させる（単語1つ: `add.ts`, `list.ts`, `done.ts` / ネストコマンドは親コマンド名ファイルにまとめる: `config.ts`）
+- コマンドファイル: サブコマンド名と一致させる（`lowercase.ts`。単語1つ: `add.ts`, `list.ts`, `done.ts` / ネストコマンドは親コマンド名ファイルにまとめる: `project.ts`, `config.ts`）
 - クラスファイル: `PascalCase` 例: `Renderer.ts`
 
 **依存関係**:
@@ -112,10 +119,11 @@ dev-tasks2/
 **役割**: ビジネスロジックの実装。タスク管理・Git 操作・GitHub 連携・設定管理を担う。
 
 **配置ファイル**:
-- `TaskManager.ts`: タスクの CRUD・ステータス管理・検索・ID 採番
-- `GitService.ts`: ブランチ作成/チェックアウト・コミットフックのインストール・プッシュ
-- `GitHubService.ts`: GitHub Issues の同期/インポート・PR 作成
-- `ConfigService.ts`: 設定値の読み書き・各キーのバリデーション
+- `TaskManager.ts`: タスクの CRUD・ステータス管理・ID 採番（P0）
+- `GlobalConfigService.ts`: グローバル設定（`~/.task/config.json`）の読み書き・アクティブプロジェクト管理（P0）
+- `GitService.ts`: ブランチ作成/チェックアウト・コミットフックのインストール・プッシュ（P1）
+- `GitHubService.ts`: GitHub Issues の同期/インポート・PR 作成（P1）
+- `ConfigService.ts`: プロジェクト別設定値の読み書き・各キーのバリデーション（P1）
 
 **命名規則**:
 - クラスファイル: `PascalCase` + 役割接尾辞（`Manager` / `Service`）
@@ -131,8 +139,9 @@ dev-tasks2/
 **役割**: ファイルシステムへのデータ読み書き。バックアップ・リストアを含む。
 
 **配置ファイル**:
-- `FileStorage.ts`: `.task/tasks.json` の読み書き・書き込み前バックアップ（`.bak`）・ディレクトリ自動作成
-- `ConfigStorage.ts`: `.task/config.json` の読み書き・パーミッション `600` の設定
+- `FileStorage.ts`: `~/.task/projects/<name>/tasks.json` または `~/.task/inbox/tasks.json` の読み書き・書き込み前バックアップ（`.bak`）・ディレクトリ自動作成（P0）
+- `GlobalConfigStorage.ts`: `~/.task/config.json` の読み書き・`~/.task/` ディレクトリ自動作成（P0）
+- `ConfigStorage.ts`: `~/.task/projects/<name>/config.json` の読み書き・パーミッション `600` の設定（P1）
 
 **命名規則**:
 - クラスファイル: `PascalCase` + `Storage` 接尾辞
@@ -152,17 +161,18 @@ dev-tasks2/
 
 **主要な型定義**:
 
-| 型名 | 用途 | 主な使用箇所 |
-|------|------|-------------|
-| `Task` | タスクエンティティ | 全レイヤー |
-| `TaskStatus` | ステータスの列挙型 | `TaskManager`, `Renderer` |
-| `TaskPriority` | 優先度の列挙型 | `TaskManager`, `Renderer` |
-| `Config` | 設定エンティティ | `ConfigService`, `ConfigStorage` |
-| `AppError` | プロジェクト共通エラークラス | 全サービス, `Renderer` |
-| `IStorage` | `FileStorage` の抽象化インターフェース（SQLite 移行用） | `TaskManager`, `FileStorage` |
-| `TaskFilter` | `listTasks` のフィルタ条件 | `TaskManager`, `commands/list.ts` |
-| `CreateTaskInput` | タスク作成の入力型 | `TaskManager`, `commands/add.ts` |
-| `SyncResult` | GitHub 同期の結果型 | `GitHubService` |
+| 型名 | 用途 | 主な使用箇所 | バージョン |
+|------|------|-------------|-----------|
+| `Task` | タスクエンティティ | 全レイヤー | P0 |
+| `TaskStatus` | ステータスの列挙型 | `TaskManager`, `Renderer` | P0 |
+| `GlobalConfig` | グローバル設定エンティティ（`activeProject` 等） | `GlobalConfigService`, `GlobalConfigStorage` | P0 |
+| `AppError` | プロジェクト共通エラークラス | 全サービス, `Renderer` | P0 |
+| `IStorage` | `FileStorage` の抽象化インターフェース（SQLite 移行用） | `TaskManager`, `FileStorage` | P0 |
+| `CreateTaskInput` | タスク作成の入力型 | `TaskManager`, `commands/add.ts` | P0 |
+| `TaskPriority` | 優先度の列挙型 | `TaskManager`, `Renderer` | P1 |
+| `ProjectConfig` | プロジェクト別設定エンティティ（GitHub Token 等） | `ConfigService`, `ConfigStorage` | P1 |
+| `TaskFilter` | `listTasks` のフィルタ条件 | `TaskManager`, `commands/list.ts` | P1 |
+| `SyncResult` | GitHub 同期の結果型 | `GitHubService` | P1 |
 
 **命名規則**:
 - 型エクスポートは全て `index.ts` に集約（個別ファイルに分散させない）
@@ -205,15 +215,17 @@ dev-tasks2/
 ```
 tests/unit/
 ├── services/
-│   ├── TaskManager.test.ts     # CRUD・ステータス遷移・searchTasks
-│   ├── GitService.test.ts      # isGitRepository・branchExists・createAndCheckoutBranch 等の Git 操作（スラッグ変換は slug.test.ts で検証）
-│   └── ConfigService.test.ts   # バリデーションロジック
+│   ├── TaskManager.test.ts           # CRUD・ステータス遷移（P0）
+│   ├── GlobalConfigService.test.ts   # activeProject の取得・切り替え（P0）
+│   ├── GitService.test.ts            # isGitRepository・branchExists 等の Git 操作（P1、スラッグ変換は slug.test.ts で検証）
+│   └── ConfigService.test.ts         # バリデーションロジック（P1）
 ├── storage/
-│   └── FileStorage.test.ts     # バックアップ・リストアのロジック
+│   ├── FileStorage.test.ts           # バックアップ・リストアのロジック（P0）
+│   └── GlobalConfigStorage.test.ts   # config.json の読み書き・デフォルト値初期化（P0）
 ├── cli/
-│   └── Renderer.test.ts        # テーブル表示・長文トリミング・カラー
+│   └── Renderer.test.ts              # テーブル表示・長文トリミング・カラー
 └── utils/
-    └── slug.test.ts             # 変換ロジックの境界値テスト
+    └── slug.test.ts                  # 変換ロジックの境界値テスト（P1）
 ```
 
 #### `tests/integration/`
@@ -272,7 +284,7 @@ tests/integration/
 
 | ファイル種別 | 配置先 | 命名規則 | 例 |
 |------------|--------|---------|-----|
-| コマンド定義 | `src/cli/commands/` | `camelCase.ts` | `add.ts`, `done.ts` |
+| コマンド定義 | `src/cli/commands/` | `lowercase.ts`（ネストコマンドは親コマンド名で集約） | `add.ts`, `project.ts` |
 | 表示クラス | `src/cli/` | `PascalCase.ts` | `Renderer.ts` |
 | サービスクラス | `src/services/` | `PascalCase + Manager/Service.ts` | `TaskManager.ts` |
 | ストレージクラス | `src/storage/` | `PascalCase + Storage.ts` | `FileStorage.ts` |
@@ -394,12 +406,11 @@ import type { ITaskManager } from '../types';
 node_modules/
 dist/
 coverage/
-.task/
 *.log
 .DS_Store
 ```
 
-> `.task/` は GitHub Token 等の機密情報を含む可能性があるため Git 管理外とする。初回 `task add` 実行時に `.gitignore` への追記を案内する。
+> タスクデータはグローバルストレージ（`~/.task/`）に保存されるため、プロジェクトの `.gitignore` への追記は不要。P1 の Git 連携機能を使う場合のみ、`task start` 実行時に `.taskcli-current` を `.gitignore` に追記するよう案内する。
 
 ### `.prettierignore` / `eslint.config.js`（除外対象）
 
