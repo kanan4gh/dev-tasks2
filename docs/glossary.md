@@ -5,7 +5,7 @@
 このドキュメントは、TaskCLI プロジェクト内で使用される用語を統一的に定義します。
 新しいメンバーのオンボーディングや、ドキュメント・コード間での用語の一貫性維持に使用してください。
 
-**更新日**: 2026-02-22
+**更新日**: 2026-02-26
 
 ---
 
@@ -13,20 +13,70 @@
 
 ### プロジェクト (Project)
 
-**定義**: TaskCLI を使用する作業ディレクトリ。`.task/` ディレクトリが存在する場所。
+**定義**: TaskCLI でタスクをまとめる名前付きグループ。グローバルストレージ（`~/.task/projects/<name>/`）で管理される。
 
-**説明**: `git init` と同じ「作業ディレクトリ単位」の概念。プロジェクトをまたいでタスクは共有されない。
+**説明**: 作業ディレクトリとは独立した概念。`task project create <name>` で作成し、`task project use <name>` でアクティブにする。どのディレクトリからでも同じプロジェクトのタスクを参照できる。
 
 **関係**:
-- 1プロジェクト = 1タスクの集合（`.task/tasks.json`）
-- 1プロジェクト = 最大1つの GitHub リポジトリ（未設定でも使用可能）
-- タスクの集合は **ローカルの1ユーザーに帰属する**（MVP では個人ツール）
-- 同じリポジトリで作業する複数の開発者はそれぞれ独立したタスク集合を持つ
+- 1プロジェクト = 1タスクの集合（`~/.task/projects/<name>/tasks.json`）
+- 1プロジェクト = 最大1つの GitHub リポジトリ（P1、未設定でも使用可能）
+- タスクの集合は **1ユーザーに帰属する**（MVP では個人ツール）
+- 同じリポジトリで作業する複数の開発者はそれぞれ独立したプロジェクト・タスク集合を持つ
 
 ```
-田中のPC ~/project/  →  .task/tasks.json  (田中のタスク)  ←→  GitHub: org/project
-鈴木のPC ~/project/  →  .task/tasks.json  (鈴木のタスク)  ←→  GitHub: org/project
+田中のPC  ~/.task/projects/my-app/tasks.json  (田中のタスク)  ←→  GitHub: org/my-app (P1)
+鈴木のPC  ~/.task/projects/my-app/tasks.json  (鈴木のタスク)  ←→  GitHub: org/my-app (P1)
 ```
+
+**関連用語**:
+- [アクティブプロジェクト](#アクティブプロジェクト-active-project)
+- [Inbox](#inbox)
+
+---
+
+### アクティブプロジェクト (Active Project)
+
+**定義**: 現在 `task` コマンドの操作対象となっているプロジェクト。
+
+**説明**: `task project use <name>` で切り替える。`~/.task/config.json` の `activeProject` フィールドに保存される。未設定の場合は [Inbox](#inbox) モードになる。
+
+**切り替えコマンド**:
+```bash
+task project use my-app   # アクティブプロジェクトを my-app に設定
+task inbox                # アクティブプロジェクトを解除し Inbox モードに切り替え
+task project list         # 全プロジェクト一覧とタスク数を表示
+```
+
+**表示**: `task list` 実行時にヘッダーとして `[Project: <name>]` を常時表示。
+
+**実装**: `~/.task/config.json`（`activeProject` フィールド）、`GlobalConfigService`
+
+---
+
+### Inbox
+
+**定義**: アクティブプロジェクトが未設定のときにタスクを保存する場所。GTD の「収集トレイ」に相当する。
+
+**説明**: プロジェクトを作成・選択する前でも `task add` でタスクを収集できる。`task move <id> <project>` でプロジェクトに移動可能。
+
+**操作コマンド**:
+```bash
+task inbox                    # Inbox モードに切り替え
+task add "やること"           # Inbox にタスクを追加
+task list                     # Inbox モード時のタスク一覧（ヘッダーに [Inbox] を表示）
+task list --inbox             # プロジェクトモード中に inbox のタスク一覧を表示
+task move 1 my-app            # Inbox のタスク #1 を my-app プロジェクトに移動
+task move 1 inbox             # プロジェクトのタスクを Inbox に戻す（双方向）
+```
+
+**制約**:
+- Inbox のタスクに `task start` を実行すると、ステータスは `in_progress` に更新されるが「プロジェクトに移動してから Git 連携（P1）を使用してください」という情報メッセージが表示される
+
+**表示**: `task list` 実行時にヘッダーとして `[Inbox]` を表示。
+
+**保存先**: `~/.task/inbox/tasks.json`
+
+**関連用語**: [アクティブプロジェクト](#アクティブプロジェクト-active-project)
 
 ---
 
@@ -119,7 +169,7 @@ task list --sort priority  # high → medium → low の順で表示
 | `"Add OAuth 2.0 Support"` | `add-oauth-2-0-support` | `feature/task-2-add-oauth-2-0-support` |
 | `"ユーザー認証機能の実装"` | `""`（空） | `feature/task-3` |
 
-**実装**: `src/utils/slug.ts`（`formatBranchName`）
+**実装**: `src/utils/slug.ts`（スラッグ変換の純粋関数を実装。`GitService.formatBranchName()` が内部で呼び出す）
 
 ---
 
@@ -127,12 +177,12 @@ task list --sort priority  # high → medium → low の順で表示
 
 **定義**: `task start <id>` で開始された、現在進行中のタスク。
 
-**説明**: `task start` 実行時に `.task/.current-task` ファイルにタスク ID が保存される。Git の `prepare-commit-msg` フックがこのファイルを参照し、コミットメッセージに `[Task #<id>]` を自動付与する。`task done` 実行時に削除される。
+**説明（P1）**: `task start` 実行時に Git リポジトリルートの `.taskcli-current` ファイルにタスク ID が保存される。Git の `prepare-commit-msg` フックがこのファイルを参照し、コミットメッセージに `[Task #<id>]` を自動付与する。`task done` 実行時に削除される。
 
 **関連用語**:
 - [コミット自動タグ付け](#コミット自動タグ付け-commit-auto-tagging)
 
-**ファイルパス**: `.task/.current-task`
+**ファイルパス（P1）**: `<Git リポジトリルート>/.taskcli-current`（`.gitignore` への追記を推奨）
 
 ---
 
@@ -140,7 +190,7 @@ task list --sort priority  # high → medium → low の順で表示
 
 **定義**: `task start` 後の `git commit` 時に、コミットメッセージ末尾へ `[Task #<id>]` を自動付与する機能。
 
-**説明**: `task start <id>` 実行時に `.git/hooks/prepare-commit-msg` フックがインストールされる。フックは `.task/.current-task` を読み込み、ID をコミットメッセージに追記する。
+**説明（P1）**: `task start <id>` 実行時に `.git/hooks/prepare-commit-msg` フックがインストールされる。フックは Git リポジトリルートの `.taskcli-current` を読み込み、ID をコミットメッセージに追記する。
 
 **使用例**:
 ```bash
@@ -156,7 +206,7 @@ git commit -m "feat(cli): --sort オプションを追加"
 
 ---
 
-### 同期 (Sync)
+### 同期 (Sync)（P1: v1.1）
 
 **定義**: ローカルのタスクデータと GitHub Issues を双方向に一致させる操作。
 
@@ -167,7 +217,7 @@ git commit -m "feat(cli): --sort オプションを追加"
 
 ---
 
-### インポート (Import)
+### インポート (Import)（P1: v1.1）
 
 **定義**: GitHub Issues からローカルにタスクを一括取り込む一方向操作。
 
@@ -281,7 +331,7 @@ git commit -m "feat(cli): --sort オプションを追加"
 
 **意味**: GitHub API の認証に使用する個人アクセストークン。
 
-**本プロジェクトでの使用**: `task config set github-token <token>` で設定する。`.task/config.json` にパーミッション `600` で保存される。
+**本プロジェクトでの使用（P1）**: `task config set github-token <token>` で設定する。`~/.task/projects/<name>/config.json` にパーミッション `600` で保存される。
 
 **必要なスコープ**: `repo`（Issues・PR の読み書きに必要な最低限）
 
@@ -305,7 +355,7 @@ git commit -m "feat(cli): --sort オプションを追加"
 
 **意味**: 最小限の機能で市場に出せる製品。
 
-**本プロジェクトでの使用**: v1.0（P0）リリースの範囲を指す。タスク基本操作・ステータス管理・Git ブランチ連携・テーブル表示が対象。
+**本プロジェクトでの使用**: v1.0（P0）リリースの範囲を指す。タスク基本操作・Inbox・プロジェクト管理・ステータス管理・テーブル表示が対象。Git 連携は v1.1（P1）。
 
 **関連ドキュメント**: [プロダクト要求定義書 > リリース計画](./product-requirements.md#リリース計画)
 
@@ -363,9 +413,21 @@ CLIレイヤー (src/cli/)
 
 ---
 
+### GlobalConfigService
+
+**定義**: グローバル設定（`~/.task/config.json`）の読み書きとアクティブプロジェクト管理を担うサービスクラス。
+
+**本プロジェクトでの位置づけ**: すべてのコマンド実行前にアクティブプロジェクトを解決し、`FileStorage` に渡すパスを決定する。
+
+**実装**: `src/services/GlobalConfigService.ts`
+
+**依存**: `GlobalConfigStorage`
+
+---
+
 ### TaskManager
 
-**定義**: タスクの CRUD・ステータス管理・検索を担うサービスクラス。
+**定義**: タスクの CRUD・ステータス管理を担うサービスクラス。
 
 **本プロジェクトでの位置づけ**: サービスレイヤーの中核。ビジネスロジック（ステータス遷移ルール・ID 採番等）を実装する。
 
@@ -413,7 +475,7 @@ CLIレイヤー (src/cli/)
 
 ### FileStorage
 
-**定義**: `.task/tasks.json` への読み書きとバックアップを担うストレージクラス。
+**定義**: `~/.task/projects/<name>/tasks.json` または `~/.task/inbox/tasks.json` への読み書きとバックアップを担うストレージクラス。
 
 **書き込みフロー**: 現在ファイルを `.bak` にコピー → 新データを書き込み → 成功したら `.bak` を削除（失敗したら `.bak` を復元）
 
@@ -421,9 +483,19 @@ CLIレイヤー (src/cli/)
 
 ---
 
+### GlobalConfigStorage
+
+**定義**: `~/.task/config.json` の読み書きと `~/.task/` ディレクトリの自動作成を担うストレージクラス。
+
+**本プロジェクトでの位置づけ**: アクティブプロジェクト名（`activeProject`）を永続化する。`~/.task/` ディレクトリが存在しない場合は自動作成する。
+
+**実装**: `src/storage/GlobalConfigStorage.ts`
+
+---
+
 ### ConfigStorage
 
-**定義**: `.task/config.json` の読み書きとファイルパーミッション設定を担うストレージクラス。
+**定義**: `~/.task/projects/<name>/config.json` の読み書きとファイルパーミッション設定を担うストレージクラス（P1）。
 
 **本プロジェクトでの位置づけ**: `chmod 600` でファイルを保護し、GitHub Token をオーナーのみ読み書き可能な状態で保存する。
 
@@ -517,32 +589,47 @@ CLIレイヤー (src/cli/)
 
 **定義**: タスクを表すデータ構造。
 
-**主要フィールド**:
+**主要フィールド（P0）**:
 - `id`: 自動採番の整数（1 始まり、欠番は再利用しない）
 - `title`: タスク名（1〜200 文字）
 - `status`: タスクステータス（`open` / `in_progress` / `completed` / `archived`）
+- `createdAt` / `updatedAt`: 作成・更新日時（ISO 8601）
+
+**追加フィールド（P1）**:
 - `priority`: 優先度（`high` / `medium` / `low`）
 - `branch`: 紐付いた Git ブランチ名（`task start` 時に自動設定）
 - `dueDate`: 期限（`YYYY-MM-DD` 形式）
-- `createdAt` / `updatedAt`: 作成・更新日時（ISO 8601）
 
-**保存先**: `.task/tasks.json`
+**保存先**: `~/.task/projects/<name>/tasks.json` または `~/.task/inbox/tasks.json`
 
 **実装**: `src/types/index.ts`
 
 ---
 
-### Config（エンティティ）
+### GlobalConfig（エンティティ）
 
-**定義**: TaskCLI の設定データ構造。
+**定義**: TaskCLI のグローバル設定データ構造。
 
 **主要フィールド**:
+- `activeProject`: アクティブプロジェクト名（`null` = Inbox モード）
+
+**保存先**: `~/.task/config.json`
+
+**実装**: `src/types/index.ts`
+
+---
+
+### ProjectConfig（エンティティ）
+
+**定義**: プロジェクト別の設定データ構造（P1）。
+
+**主要フィールド（P1）**:
 - `githubToken`: GitHub Personal Access Token
 - `githubOwner`: GitHub リポジトリのオーナー名
 - `githubRepo`: GitHub リポジトリ名
 - `defaultBranch`: PR のベースブランチ（デフォルト: `main`）
 
-**保存先**: `.task/config.json`（パーミッション `600`）
+**保存先**: `~/.task/projects/<name>/config.json`（パーミッション `600`、P1）
 
 **実装**: `src/types/index.ts`
 
@@ -586,11 +673,12 @@ CLIレイヤー (src/cli/)
 
 ### あ行
 - [アーカイブ済み](#タスクステータス-task-status) — ステータス用語
+- [アクティブプロジェクト](#アクティブプロジェクト-active-project) — ドメイン用語
 - [インポート](#インポート-import) — ドメイン用語
+- [Inbox](#inbox) — ドメイン用語
 
 ### か行
 - [コミット自動タグ付け](#コミット自動タグ付け-commit-auto-tagging) — ドメイン用語
-- [Config](#configエンティティ) — データモデル用語
 
 ### さ行
 - [作業中タスク](#作業中タスク-current-task) — ドメイン用語
@@ -625,6 +713,9 @@ CLIレイヤー (src/cli/)
 - [FileStorage](#filestorage) — アーキテクチャ用語
 - [GitHubService](#githubservice) — アーキテクチャ用語
 - [GitService](#gitservice) — アーキテクチャ用語
+- [GlobalConfig](#globalconfigエンティティ) — データモデル用語
+- [GlobalConfigService](#globalconfigservice) — アーキテクチャ用語
+- [GlobalConfigStorage](#globalconfigstorage) — アーキテクチャ用語
 - [husky](#husky) — 技術用語
 - [inquirer](#inquirer) — 技術用語
 - [IStorage](#istorage) — アーキテクチャ用語
@@ -633,6 +724,7 @@ CLIレイヤー (src/cli/)
 - [MVP](#mvp) — 略語
 - [PAT](#pat) — 略語
 - [PR](#pr) — 略語
+- [ProjectConfig](#projectconfigエンティティ) — データモデル用語
 - [Renderer](#renderer) — アーキテクチャ用語
 - [simple-git](#simple-git) — 技術用語
 - [Vitest](#vitest) — 技術用語
