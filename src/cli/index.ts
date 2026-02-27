@@ -16,7 +16,7 @@ const program = new Command();
 program
   .name('task')
   .description('ターミナルで完結する、開発者向け GTD タスク管理ツール')
-  .version('0.1.0');
+  .version('0.2.0');
 
 registerAddCommand(program);
 registerListCommand(program);
