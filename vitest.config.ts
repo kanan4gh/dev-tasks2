@@ -17,6 +17,10 @@ export default defineConfig({
         '.steering/**',
         '**/*.config.{ts,js}',
         '**/types/**',
+        // CLIエントリーポイントとコマンド定義ファイルは Commander.js の配線コードのため除外
+        // ビジネスロジックはサービス・ストレージ層でテスト済み
+        'src/cli/index.ts',
+        'src/cli/commands/**',
       ],
       thresholds: {
         branches: 80,
