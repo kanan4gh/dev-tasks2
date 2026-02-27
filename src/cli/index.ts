@@ -10,23 +10,39 @@ import { registerArchiveCommand } from './commands/archive.js';
 import { registerProjectCommand } from './commands/project.js';
 import { registerMoveCommand } from './commands/move.js';
 import { registerInboxCommand } from './commands/inbox.js';
+import { checkUpdate } from '../utils/checkUpdate.js';
 
-const program = new Command();
+const VERSION = '0.2.0';
 
-program
-  .name('task')
-  .description('ターミナルで完結する、開発者向け GTD タスク管理ツール')
-  .version('0.2.0');
+async function main(): Promise<void> {
+  // Commander.js の .version() は同期のみ対応のため、--version を手動ハンドルする
+  if (process.argv.includes('--version') || process.argv.includes('-V')) {
+    console.log(VERSION);
+    const notice = await checkUpdate(VERSION);
+    if (notice) console.log(notice);
+    process.exit(0);
+    return;
+  }
 
-registerAddCommand(program);
-registerListCommand(program);
-registerShowCommand(program);
-registerStartCommand(program);
-registerDoneCommand(program);
-registerDeleteCommand(program);
-registerArchiveCommand(program);
-registerProjectCommand(program);
-registerMoveCommand(program);
-registerInboxCommand(program);
+  const program = new Command();
 
-program.parse(process.argv);
+  program
+    .name('task')
+    .description('ターミナルで完結する、開発者向け GTD タスク管理ツール')
+    .version(VERSION);
+
+  registerAddCommand(program);
+  registerListCommand(program);
+  registerShowCommand(program);
+  registerStartCommand(program);
+  registerDoneCommand(program);
+  registerDeleteCommand(program);
+  registerArchiveCommand(program);
+  registerProjectCommand(program);
+  registerMoveCommand(program);
+  registerInboxCommand(program);
+
+  program.parse(process.argv);
+}
+
+main();
