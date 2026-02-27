@@ -41,6 +41,14 @@ task --version
 task --help
 ```
 
+> **アップデート通知**: `task --version` 実行時に新しいバージョンがあると通知が表示されます。
+> ```
+> 0.2.0
+>
+> ✨ アップデートがあります: 0.2.0 → 0.3.0
+>    最新版: https://github.com/kanan4gh/dev-tasks2/releases/latest
+> ```
+
 ---
 
 ## アップデート
