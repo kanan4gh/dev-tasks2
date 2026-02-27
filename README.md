@@ -43,6 +43,18 @@ task --help
 
 ---
 
+## アップデート
+
+```bash
+cd dev-tasks2
+git pull
+npm install
+npm run build
+npm install -g .
+```
+
+---
+
 ## アンインストール
 
 ```bash
