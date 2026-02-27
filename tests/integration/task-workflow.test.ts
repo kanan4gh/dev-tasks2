@@ -76,3 +76,70 @@ describe('task-workflow（統合テスト）', () => {
     expect(() => manager.archiveTask(task.id)).toThrow(AppError);
   });
 });
+
+describe('cross-project list（統合テスト）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'taskcli-cross-'));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true });
+  });
+
+  function makeStorage(projectName: string): FileStorage {
+    return new FileStorage(join(tmpDir, 'projects', projectName, 'tasks.json'));
+  }
+
+  function makeInboxStorage(): FileStorage {
+    return new FileStorage(join(tmpDir, 'inbox', 'tasks.json'));
+  }
+
+  it('複数プロジェクト + Inbox のタスクを全件取得できる', () => {
+    const managerA = new TaskManager(makeStorage('proj-a'));
+    const managerB = new TaskManager(makeStorage('proj-b'));
+    const inboxManager = new TaskManager(makeInboxStorage());
+
+    managerA.createTask({ title: 'Task in A' });
+    managerB.createTask({ title: 'Task in B' });
+    inboxManager.createTask({ title: 'Task in Inbox' });
+
+    expect(managerA.listTasks()).toHaveLength(1);
+    expect(managerB.listTasks()).toHaveLength(1);
+    expect(inboxManager.listTasks()).toHaveLength(1);
+    expect(managerA.listTasks()[0].title).toBe('Task in A');
+    expect(managerB.listTasks()[0].title).toBe('Task in B');
+    expect(inboxManager.listTasks()[0].title).toBe('Task in Inbox');
+  });
+
+  it('--status in_progress でステータス絞り込みが機能する', () => {
+    const managerA = new TaskManager(makeStorage('proj-a'));
+    const t1 = managerA.createTask({ title: 'Open task' });
+    const t2 = managerA.createTask({ title: 'In progress task' });
+    managerA.startTask(t2.id);
+
+    const allTasks = managerA.listTasks();
+    const filtered = managerA.listTasks({ status: 'in_progress' });
+
+    expect(allTasks).toHaveLength(2);
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].id).toBe(t2.id);
+    // t1 はフィルタ後に含まれない
+    expect(filtered.find((t) => t.id === t1.id)).toBeUndefined();
+  });
+
+  it('タスクが 0 件のプロジェクトはグループに含まれない', () => {
+    const managerA = new TaskManager(makeStorage('proj-a'));
+    const managerB = new TaskManager(makeStorage('proj-b'));
+
+    managerA.createTask({ title: 'Task in A' });
+    // proj-b にはタスクを追加しない
+
+    const tasksA = managerA.listTasks();
+    const tasksB = managerB.listTasks();
+
+    expect(tasksA).toHaveLength(1);
+    expect(tasksB).toHaveLength(0);
+  });
+});

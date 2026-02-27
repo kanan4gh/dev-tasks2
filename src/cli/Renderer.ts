@@ -90,6 +90,17 @@ export class Renderer {
     console.error(`  対処: ${error.remedy}`);
   }
 
+  renderGroupedTable(groups: { header: string; tasks: Task[] }[]): void {
+    if (groups.length === 0) {
+      console.log(chalk.gray('タスクがありません。'));
+      return;
+    }
+    for (const group of groups) {
+      this.renderTable(group.tasks, group.header);
+      console.log();
+    }
+  }
+
   renderProjectList(
     projects: string[],
     activeProject: string | null,

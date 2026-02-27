@@ -90,6 +90,7 @@ task done 1
 |---------|------|
 | `task add <タイトル>` | タスクを作成する |
 | `task list` | タスク一覧を表示する |
+| `task list --all` | 全プロジェクト + Inbox のタスクを横断表示する |
 | `task show <id>` | タスクの詳細を表示する |
 | `task start <id>` | タスクを開始する（`in_progress` に変更） |
 | `task done <id>` | タスクを完了にする（`completed` に変更） |
@@ -136,6 +137,7 @@ task list [オプション]
   -s, --status <ステータス>   ステータスで絞り込む
                                (open|in_progress|completed|archived)
   --inbox                      Inbox のタスクを表示する
+  --all                        全プロジェクト + Inbox を横断表示する
 ```
 
 例:
@@ -144,6 +146,8 @@ task list [オプション]
 task list                        # アクティブプロジェクトのタスクを表示
 task list --status in_progress   # 作業中のタスクのみ表示
 task list --inbox                # Inbox のタスクを表示
+task list --all                  # 全プロジェクト + Inbox を横断表示
+task list --all --status open    # 全プロジェクトの未着手タスクを表示
 ```
 
 ---
