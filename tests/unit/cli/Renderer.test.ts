@@ -115,6 +115,52 @@ describe('Renderer', () => {
     });
   });
 
+  describe('renderGroupedTable()', () => {
+    it('groups が空の場合「タスクがありません」を表示する', () => {
+      renderer.renderGroupedTable([]);
+      const output = consoleSpy.mock.calls.join('\n');
+      expect(output).toContain('タスクがありません');
+    });
+
+    it('各グループのヘッダーとタスクを表示する', () => {
+      const groups = [
+        {
+          header: '[Project: myapp]',
+          tasks: [makeTask({ id: 1, title: 'Task A' })],
+        },
+        {
+          header: '[Project: personal]',
+          tasks: [makeTask({ id: 2, title: 'Task B' })],
+        },
+      ];
+      renderer.renderGroupedTable(groups);
+      const output = consoleSpy.mock.calls.join('\n');
+      expect(output).toContain('[Project: myapp]');
+      expect(output).toContain('Task A');
+      expect(output).toContain('[Project: personal]');
+      expect(output).toContain('Task B');
+    });
+
+    it('グループ間に空行を挿入する', () => {
+      const groups = [
+        {
+          header: '[Project: myapp]',
+          tasks: [makeTask({ id: 1 })],
+        },
+        {
+          header: '[Inbox]',
+          tasks: [makeTask({ id: 2 })],
+        },
+      ];
+      renderer.renderGroupedTable(groups);
+      // console.log() が空行として呼ばれているか（引数なし呼び出し）
+      const emptyLineCalls = consoleSpy.mock.calls.filter(
+        (call: unknown[]) => call.length === 0 || call[0] === ''
+      );
+      expect(emptyLineCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
   describe('renderProjectList()', () => {
     it('プロジェクトがない場合に案内メッセージを表示する', () => {
       renderer.renderProjectList([], null, new Map(), 0);
