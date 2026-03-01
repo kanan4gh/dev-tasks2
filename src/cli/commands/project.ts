@@ -112,6 +112,29 @@ export function registerProjectCommand(program: Command): void {
       }
     });
 
+  // task project rename <old-name> <new-name>
+  projectCmd
+    .command('rename <oldName> <newName>')
+    .description('プロジェクト名を変更する')
+    .action((oldName: string, newName: string) => {
+      const renderer = new Renderer();
+      try {
+        validateProjectName(newName);
+        const configService = new GlobalConfigService();
+        configService.renameProject(oldName, newName);
+        renderer.renderSuccess(
+          `プロジェクト "${oldName}" を "${newName}" に名称変更しました`
+        );
+      } catch (error) {
+        if (error instanceof AppError) {
+          renderer.renderError(error);
+        } else {
+          console.error(error);
+        }
+        process.exit(1);
+      }
+    });
+
   // task project remove <name>
   projectCmd
     .command('remove <name>')

@@ -21,13 +21,19 @@ export interface CreateTaskInput {
 }
 
 export interface TaskFilter {
-  status?: TaskStatus;
+  status?: TaskStatus | TaskStatus[];
   priority?: TaskPriority;
+}
+
+export interface ProjectEntry {
+  name: string;
+  id: number;
 }
 
 export interface GlobalConfig {
   activeProject: string | null;
-  projects: string[];
+  projects: ProjectEntry[];
+  lastProjectId: number;
 }
 
 export interface IStorage {

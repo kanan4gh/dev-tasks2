@@ -109,7 +109,7 @@ task done 1
 | コマンド | 説明 |
 |---------|------|
 | `task add <タイトル>` | タスクを作成する |
-| `task list` | タスク一覧を表示する |
+| `task list` | タスク一覧を表示する（デフォルト: `open` + `in_progress` のみ） |
 | `task list --all` | 全プロジェクト + Inbox のタスクを横断表示する |
 | `task show <id>` | タスクの詳細を表示する |
 | `task start <id>` | タスクを開始する（`in_progress` に変更） |
@@ -126,6 +126,7 @@ task done 1
 | `task project create <名前>` | プロジェクトを作成する |
 | `task project list` | プロジェクト一覧を表示する（タスク数付き） |
 | `task project use <名前>` | アクティブプロジェクトを切り替える |
+| `task project rename <旧名> <新名>` | プロジェクト名を変更する |
 | `task project remove <名前>` | プロジェクトをリストから削除する（データは保持） |
 | `task inbox` | Inbox モードに切り替える |
 
@@ -156,6 +157,7 @@ task list [オプション]
 オプション:
   -s, --status <ステータス>   ステータスで絞り込む
                                (open|in_progress|completed|archived)
+  --all-status                 全ステータスのタスクを表示する（デフォルトは open + in_progress）
   --inbox                      Inbox のタスクを表示する
   --all                        全プロジェクト + Inbox を横断表示する
 ```
@@ -163,12 +165,43 @@ task list [オプション]
 例:
 
 ```bash
-task list                        # アクティブプロジェクトのタスクを表示
-task list --status in_progress   # 作業中のタスクのみ表示
-task list --inbox                # Inbox のタスクを表示
-task list --all                  # 全プロジェクト + Inbox を横断表示
-task list --all --status open    # 全プロジェクトの未着手タスクを表示
+task list                           # アクティブプロジェクトの open + in_progress タスクを表示
+task list --all-status              # 全ステータスのタスクを表示（completed / archived 含む）
+task list --status in_progress      # 作業中のタスクのみ表示
+task list --inbox                   # Inbox のタスクを表示
+task list --all                     # 全プロジェクト + Inbox を横断表示
+task list --all --status open       # 全プロジェクトの未着手タスクを表示
 ```
+
+---
+
+### タスク ID
+
+タスクは **複合 ID**（`<プロジェクトID>-<ローカルID>`）で一意に識別されます。
+
+```bash
+task list --all
+# 出力例:
+# [Project: myapp]
+#  ID   Status       Title
+#  ──── ──────────── ────────────────────────────────────────
+#  1-1  in_progress  ログイン機能の実装
+#  1-2  open         テストを書く
+#
+# [Inbox]
+#  0-1  open         あとで整理するメモ
+
+# 複合 ID でそのまま操作できる
+task done 1-1       # アクティブプロジェクト以外のタスクを操作
+task show 0-1       # Inbox のタスクを参照
+
+# アクティブプロジェクトのタスクはローカル ID のみでも操作可能
+task start 2        # 現在のプロジェクトのタスク #2 を開始
+```
+
+- **プロジェクト ID**: `task project create` で採番される数値（変更不可）
+- **Inbox は固定 ID `0`**: `0-1`, `0-2`, ...
+- `task project rename` でプロジェクト名を変えても複合 ID の数値部分は変わらない
 
 ---
 

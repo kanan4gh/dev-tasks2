@@ -4,8 +4,7 @@ import { TaskManager } from '../../services/TaskManager.js';
 import { GlobalConfigService } from '../../services/GlobalConfigService.js';
 import { FileStorage } from '../../storage/FileStorage.js';
 import { AppError } from '../../types/index.js';
-
-import { parseId } from '../helpers.js';
+import { parseTaskRef, resolveTaskContext } from '../helpers.js';
 
 export function registerMoveCommand(program: Command): void {
   program
@@ -14,11 +13,12 @@ export function registerMoveCommand(program: Command): void {
     .action((idStr: string, destination: string) => {
       const renderer = new Renderer();
       try {
-        const id = parseId(idStr);
+        const ref = parseTaskRef(idStr);
         const configService = new GlobalConfigService();
-
-        const activeProject = configService.getActiveProject();
-        const sourceFilePath = configService.getTaskFilePath(activeProject);
+        const { filePath: sourceFilePath, localId } = resolveTaskContext(
+          ref,
+          configService
+        );
 
         let targetFilePath: string;
         if (destination === 'inbox') {
@@ -46,11 +46,11 @@ export function registerMoveCommand(program: Command): void {
         const targetStorage = new FileStorage(targetFilePath);
         const manager = new TaskManager(sourceStorage);
 
-        const movedTask = manager.moveTask(id, targetStorage);
+        const movedTask = manager.moveTask(localId, targetStorage);
         const destLabel =
           destination === 'inbox' ? 'Inbox' : `プロジェクト "${destination}"`;
         renderer.renderSuccess(
-          `タスク #${id} を ${destLabel} に移動しました（新 ID: ${movedTask.id}）`
+          `タスク #${localId} を ${destLabel} に移動しました（新 ID: ${movedTask.id}）`
         );
       } catch (error) {
         if (error instanceof AppError) {

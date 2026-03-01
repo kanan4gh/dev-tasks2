@@ -1,9 +1,10 @@
 import type { Command } from 'commander';
 import { Renderer } from '../Renderer.js';
 import { TaskManager } from '../../services/TaskManager.js';
+import { GlobalConfigService } from '../../services/GlobalConfigService.js';
 import { FileStorage } from '../../storage/FileStorage.js';
 import { AppError } from '../../types/index.js';
-import { resolveTaskFilePath, parseId, confirm } from '../helpers.js';
+import { parseTaskRef, resolveTaskContext, confirm } from '../helpers.js';
 
 export function registerDeleteCommand(program: Command): void {
   program
@@ -12,13 +13,14 @@ export function registerDeleteCommand(program: Command): void {
     .action(async (idStr: string) => {
       const renderer = new Renderer();
       try {
-        const id = parseId(idStr);
-        const filePath = resolveTaskFilePath();
+        const ref = parseTaskRef(idStr);
+        const configService = new GlobalConfigService();
+        const { filePath, localId } = resolveTaskContext(ref, configService);
         const storage = new FileStorage(filePath);
         const manager = new TaskManager(storage);
 
         // 削除対象のタスクを取得してタイトルを確認プロンプトに表示
-        const task = manager.getTask(id);
+        const task = manager.getTask(localId);
 
         const confirmed = await confirm(
           `タスク #${task.id}「${task.title}」を削除しますか？ [y/N] `
@@ -29,8 +31,8 @@ export function registerDeleteCommand(program: Command): void {
           return;
         }
 
-        manager.deleteTask(id);
-        renderer.renderSuccess(`タスク #${id} を削除しました`);
+        manager.deleteTask(localId);
+        renderer.renderSuccess(`タスク #${localId} を削除しました`);
       } catch (error) {
         if (error instanceof AppError) {
           renderer.renderError(error);

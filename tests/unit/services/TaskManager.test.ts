@@ -189,7 +189,7 @@ describe('TaskManager', () => {
       expect(tasks.map((t) => t.id)).toEqual([1, 2, 3]);
     });
 
-    it('ステータスでフィルタリングできる', () => {
+    it('単一ステータスでフィルタリングできる', () => {
       const storage = makeMockStorage([
         makeTask({ id: 1, status: 'open' }),
         makeTask({ id: 2, status: 'in_progress' }),
@@ -199,6 +199,29 @@ describe('TaskManager', () => {
       const result = manager.listTasks({ status: 'in_progress' });
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe(2);
+    });
+
+    it('配列ステータスでフィルタリングできる（open + in_progress）', () => {
+      const storage = makeMockStorage([
+        makeTask({ id: 1, status: 'open' }),
+        makeTask({ id: 2, status: 'in_progress' }),
+        makeTask({ id: 3, status: 'completed' }),
+        makeTask({ id: 4, status: 'archived' }),
+      ]);
+      const manager = new TaskManager(storage);
+      const result = manager.listTasks({ status: ['open', 'in_progress'] });
+      expect(result).toHaveLength(2);
+      expect(result.map((t) => t.id)).toEqual([1, 2]);
+    });
+
+    it('フィルタなしで全件返す', () => {
+      const storage = makeMockStorage([
+        makeTask({ id: 1, status: 'open' }),
+        makeTask({ id: 2, status: 'completed' }),
+        makeTask({ id: 3, status: 'archived' }),
+      ]);
+      const manager = new TaskManager(storage);
+      expect(manager.listTasks()).toHaveLength(3);
     });
   });
 

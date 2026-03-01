@@ -4,7 +4,7 @@ import { TaskManager } from '../../services/TaskManager.js';
 import { GlobalConfigService } from '../../services/GlobalConfigService.js';
 import { FileStorage } from '../../storage/FileStorage.js';
 import { AppError } from '../../types/index.js';
-import { parseId } from '../helpers.js';
+import { parseTaskRef, resolveTaskContext } from '../helpers.js';
 
 export function registerStartCommand(program: Command): void {
   program
@@ -13,18 +13,20 @@ export function registerStartCommand(program: Command): void {
     .action((idStr: string) => {
       const renderer = new Renderer();
       try {
-        const id = parseId(idStr);
+        const ref = parseTaskRef(idStr);
         const configService = new GlobalConfigService();
-        const activeProject = configService.getActiveProject();
-        const filePath = configService.getTaskFilePath(activeProject);
+        const { filePath, projectName, localId } = resolveTaskContext(
+          ref,
+          configService
+        );
         const storage = new FileStorage(filePath);
         const manager = new TaskManager(storage);
 
-        const task = manager.startTask(id);
+        const task = manager.startTask(localId);
         renderer.renderSuccess(`タスク #${task.id} を開始しました`);
 
         // Inbox モードの場合はプロジェクトへの移動を促す
-        if (activeProject === null) {
+        if (projectName === null) {
           renderer.renderInfo(
             `タスク #${task.id} を開始しました。プロジェクトに関連付けるには task move ${task.id} <project-name> を実行してください。`
           );

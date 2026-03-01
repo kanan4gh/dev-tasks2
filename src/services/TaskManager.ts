@@ -47,7 +47,10 @@ export class TaskManager {
     let result = tasks;
 
     if (filter?.status !== undefined) {
-      result = result.filter((t) => t.status === filter.status);
+      const statuses = Array.isArray(filter.status)
+        ? filter.status
+        : [filter.status];
+      result = result.filter((t) => statuses.includes(t.status));
     }
     if (filter?.priority !== undefined) {
       result = result.filter((t) => t.priority === filter.priority);
