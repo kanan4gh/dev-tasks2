@@ -7,15 +7,10 @@ import {
 } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
-import type { GlobalConfig } from '../types/index.js';
+import type { GlobalConfig, ProjectEntry } from '../types/index.js';
 
 const TASK_DIR = join(homedir(), '.task');
 const CONFIG_PATH = join(TASK_DIR, 'config.json');
-
-const DEFAULT_CONFIG: GlobalConfig = {
-  activeProject: null,
-  projects: [],
-};
 
 export class GlobalConfigStorage {
   private readonly configPath: string;
@@ -36,19 +31,44 @@ export class GlobalConfigStorage {
   load(): GlobalConfig {
     this.ensureDirectory();
     if (!existsSync(this.configPath)) {
-      return { ...DEFAULT_CONFIG };
+      return { activeProject: null, projects: [], lastProjectId: 0 };
     }
     try {
       const raw = readFileSync(this.configPath, 'utf-8');
-      const parsed = JSON.parse(raw) as Partial<GlobalConfig>;
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+
+      let projects: ProjectEntry[];
+      let lastProjectId: number;
+
+      if (
+        Array.isArray(parsed.projects) &&
+        parsed.projects.length > 0 &&
+        typeof parsed.projects[0] === 'string'
+      ) {
+        // 旧フォーマット (string[]) → 新フォーマット (ProjectEntry[]) への自動マイグレーション
+        projects = (parsed.projects as string[]).map((name, i) => ({
+          name,
+          id: i + 1,
+        }));
+        lastProjectId = projects.length;
+      } else {
+        projects = Array.isArray(parsed.projects)
+          ? (parsed.projects as ProjectEntry[])
+          : [];
+        lastProjectId =
+          typeof parsed.lastProjectId === 'number' ? parsed.lastProjectId : 0;
+      }
+
       return {
-        activeProject: parsed.activeProject ?? null,
-        projects: Array.isArray(parsed.projects)
-          ? (parsed.projects as string[])
-          : [],
+        activeProject:
+          typeof parsed.activeProject === 'string'
+            ? parsed.activeProject
+            : null,
+        projects,
+        lastProjectId,
       };
     } catch {
-      return { ...DEFAULT_CONFIG };
+      return { activeProject: null, projects: [], lastProjectId: 0 };
     }
   }
 

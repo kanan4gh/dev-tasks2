@@ -74,7 +74,9 @@ type TaskStatus = 'open' | 'in_progress' | 'completed' | 'archived';
 type TaskPriority = 'high' | 'medium' | 'low';
 
 interface Task {
-  id: number;              // 自動採番（1始まり、欠番は再利用しない）
+  id: number;              // ローカル ID（プロジェクト内で自動採番、1始まり、欠番は再利用しない）
+                           // 表示時は複合 ID 形式: <projectId>-<localId>（例: 1-3）
+                           // Inbox タスクは 0-<localId>（例: 0-2）
   title: string;           // タスク名（1〜200文字）
   description: string;     // 詳細説明（Markdown可、デフォルト空文字）
   status: TaskStatus;      // ステータス（デフォルト: 'open'）
@@ -97,10 +99,19 @@ interface Task {
 グローバル設定（`~/.task/config.json`）。ユーザー全体に共通する設定を管理する。
 
 ```typescript
+interface ProjectEntry {
+  name: string;  // プロジェクト名
+  id: number;    // 自動採番された数値 ID（Inbox は固定値 0）
+}
+
 interface GlobalConfig {
   activeProject: string | null;  // アクティブプロジェクト名（null = Inbox モード）
+  projects: ProjectEntry[];      // プロジェクト一覧
+  lastProjectId: number;         // 最後に採番したプロジェクト ID
 }
 ```
+
+**旧フォーマットとの互換性**: `projects` が `string[]` 形式の場合、`GlobalConfigStorage.load()` 実行時に自動マイグレーションを行う（`{ name, id }` 形式に変換）。変換結果は次回の書き込みコマンド実行時に `config.json` へ永続化される（遅延書き込み）。
 
 ### エンティティ: ProjectConfig
 
@@ -185,7 +196,7 @@ class CLI {
 | コマンド | 引数 / オプション | 処理概要 |
 |---------|----------------|---------|
 | `task add <title>` | `--description` | タスク作成 |
-| `task list` | `--status <status>`, `--inbox` | タスク一覧表示（`--status` でステータス絞り込み、`--inbox` で inbox のタスクを表示） |
+| `task list` | `--status <status>`, `--all-status`, `--all`, `--inbox` | タスク一覧表示。デフォルトは `open` + `in_progress` のみ表示。`--all-status` で全ステータス表示。`--all` で全プロジェクト + Inbox を一覧表示 |
 | `task show <id>` | — | タスク詳細表示 |
 | `task start <id>` | — | ステータスを `in_progress` に変更 |
 | `task done <id>` | — | ステータスを `completed` に変更 |
@@ -194,6 +205,7 @@ class CLI {
 | `task project create <name>` | — | プロジェクト作成 |
 | `task project list` | — | プロジェクト一覧表示（タスク数付き） |
 | `task project use <name>` | — | アクティブプロジェクトを切り替え |
+| `task project rename <old> <new>` | — | プロジェクト名を変更（ID は変わらない） |
 | `task project remove <name>` | — | プロジェクト削除（確認プロンプト付き） |
 | `task move <id> <project>` | — | タスクを別プロジェクト（または `inbox`）に移動 |
 | `task inbox` | — | アクティブプロジェクトを解除し Inbox モードに切り替え |
@@ -243,7 +255,7 @@ interface CreateTaskInput {
 }
 
 interface TaskFilter {
-  status?: TaskStatus;
+  status?: TaskStatus | TaskStatus[];  // 複数ステータス指定可（例: ['open', 'in_progress']）
   priority?: TaskPriority;
   sort?: 'id' | 'priority' | 'dueDate' | 'createdAt';
   // デフォルトは 'id' の昇順。'priority' はhigh > medium > lowの順。
@@ -681,19 +693,37 @@ sequenceDiagram
 
 ### task list のテーブル表示
 
-**P0（v1.0 MVP）表示**:
+**P0（v1.0 MVP）表示**（`task list`、デフォルトは `open` + `in_progress` のみ）:
 ```
 [Project: my-app]
- ID  Status       Title
- ─── ──────────── ────────────────────────────────────────
-  1  in_progress  ユーザー認証機能の実装
-  2  open         データエクスポート機能
-  3  completed    初期セットアップ
+ ID   Status       Title
+ ──── ──────────── ────────────────────────────────────────
+ 1-1  in_progress  ユーザー認証機能の実装
+ 1-2  open         データエクスポート機能
 
 [Inbox]  ← アクティブプロジェクト未設定時
- ID  Status       Title
- ─── ──────────── ────────────────────────────────────────
-  1  open         買い物リスト作成
+ ID   Status       Title
+ ──── ──────────── ────────────────────────────────────────
+ 0-1  open         買い物リスト作成
+```
+
+**`task list --all`（全プロジェクト表示）**:
+```
+[Project: my-app]    ← アクティブプロジェクトは緑色強調
+ ID   Status       Title
+ ──── ──────────── ────────────────────────────────────────
+ 1-1  in_progress  ユーザー認証機能の実装
+ 1-2  open         データエクスポート機能
+
+[Project: personal]
+ ID   Status       Title
+ ──── ──────────── ────────────────────────────────────────
+ 2-1  open         読書リスト
+
+[Inbox]
+ ID   Status       Title
+ ──── ──────────── ────────────────────────────────────────
+ 0-1  open         買い物リスト作成
 ```
 
 **P1（v1.1）追加列**:

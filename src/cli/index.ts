@@ -12,7 +12,7 @@ import { registerMoveCommand } from './commands/move.js';
 import { registerInboxCommand } from './commands/inbox.js';
 import { checkUpdate } from '../utils/checkUpdate.js';
 
-const VERSION = '0.3.0';
+const VERSION = '0.4.0';
 
 async function main(): Promise<void> {
   // Commander.js の .version() は同期のみ対応のため、--version を手動ハンドルする

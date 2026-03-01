@@ -25,7 +25,7 @@ function colorStatus(status: TaskStatus): string {
 }
 
 export class Renderer {
-  renderTable(tasks: Task[], header: string): void {
+  renderTable(tasks: Task[], header: string, projectId?: number): void {
     console.log(chalk.bold(header));
 
     if (tasks.length === 0) {
@@ -46,8 +46,10 @@ export class Renderer {
     });
 
     for (const task of tasks) {
+      const idStr =
+        projectId !== undefined ? `${projectId}-${task.id}` : String(task.id);
       table.push([
-        String(task.id),
+        idStr,
         colorStatus(task.status),
         truncate(task.title, MAX_TITLE_LENGTH),
         task.branch
@@ -90,13 +92,23 @@ export class Renderer {
     console.error(`  対処: ${error.remedy}`);
   }
 
-  renderGroupedTable(groups: { header: string; tasks: Task[] }[]): void {
+  renderGroupedTable(
+    groups: { header: string; tasks: Task[]; projectId?: number }[],
+    activeProject: string | null = null
+  ): void {
     if (groups.length === 0) {
       console.log(chalk.gray('タスクがありません。'));
       return;
     }
     for (const group of groups) {
-      this.renderTable(group.tasks, group.header);
+      const isActive =
+        activeProject !== null
+          ? group.header === `[Project: ${activeProject}]`
+          : group.header === '[Inbox]';
+      const displayHeader = isActive
+        ? chalk.green(chalk.bold(group.header))
+        : group.header;
+      this.renderTable(group.tasks, displayHeader, group.projectId);
       console.log();
     }
   }

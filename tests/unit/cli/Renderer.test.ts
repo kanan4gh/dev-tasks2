@@ -36,7 +36,7 @@ describe('Renderer', () => {
       expect(output).toContain('タスクがありません');
     });
 
-    it('タスク一覧をテーブルで表示する', () => {
+    it('タスク一覧をテーブルで表示する（ローカル ID）', () => {
       renderer.renderTable(
         [makeTask({ id: 1, title: 'My task' })],
         '[Project: test]'
@@ -44,6 +44,16 @@ describe('Renderer', () => {
       const output = consoleSpy.mock.calls.join('\n');
       expect(output).toContain('My task');
       expect(output).toContain('1');
+    });
+
+    it('projectId を渡すと複合 ID を表示する', () => {
+      renderer.renderTable(
+        [makeTask({ id: 3, title: 'Composite task' })],
+        '[Project: my-app]',
+        1
+      );
+      const output = consoleSpy.mock.calls.join('\n');
+      expect(output).toContain('1-3');
     });
 
     it('40文字を超えるタイトルを省略する', () => {
@@ -139,6 +149,39 @@ describe('Renderer', () => {
       expect(output).toContain('Task A');
       expect(output).toContain('[Project: personal]');
       expect(output).toContain('Task B');
+    });
+
+    it('activeProject を渡すとそのヘッダーが強調表示される', () => {
+      const groups = [
+        {
+          header: '[Project: my-app]',
+          tasks: [makeTask({ id: 1 })],
+          projectId: 1,
+        },
+        {
+          header: '[Project: personal]',
+          tasks: [makeTask({ id: 2 })],
+          projectId: 2,
+        },
+      ];
+      renderer.renderGroupedTable(groups, 'my-app');
+      const output = consoleSpy.mock.calls.join('\n');
+      expect(output).toContain('[Project: my-app]');
+      expect(output).toContain('[Project: personal]');
+    });
+
+    it('activeProject=null のとき [Inbox] ヘッダーが強調される', () => {
+      const groups = [
+        {
+          header: '[Project: my-app]',
+          tasks: [makeTask({ id: 1 })],
+          projectId: 1,
+        },
+        { header: '[Inbox]', tasks: [makeTask({ id: 2 })], projectId: 0 },
+      ];
+      renderer.renderGroupedTable(groups, null);
+      const output = consoleSpy.mock.calls.join('\n');
+      expect(output).toContain('[Inbox]');
     });
 
     it('グループ間に空行を挿入する', () => {
