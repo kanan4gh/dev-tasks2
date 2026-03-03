@@ -42,6 +42,24 @@ export interface IStorage {
   ensureDirectory(): void;
 }
 
+export interface Routine {
+  id: number;
+  title: string;
+  paused: boolean;
+  createdAt: string;
+}
+
+export interface DailyLog {
+  date: string; // "YYYY-MM-DD"
+  entries: Record<number, 'pending' | 'done'>;
+}
+
+export interface RoutineStats {
+  routine: Routine;
+  weekHistory: ('done' | 'pending' | 'no-data')[]; // 7日分（古い順）
+  rate: number; // 0.0 〜 1.0
+}
+
 export class AppError extends Error {
   constructor(
     message: string,

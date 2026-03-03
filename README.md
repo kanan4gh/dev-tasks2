@@ -130,6 +130,43 @@ task done 1
 | `task project remove <名前>` | プロジェクトをリストから削除する（データは保持） |
 | `task inbox` | Inbox モードに切り替える |
 
+### ルーティーン管理
+
+| コマンド | 説明 |
+|---|---|
+| `task daily add <タイトル>` | ルーティーンを登録する |
+| `task daily list` | 今日のルーティーン一覧を表示する |
+| `task daily list --all` | 一時停止中のルーティーンも含めて表示する |
+| `task daily done <id>` | ルーティーンを済にする |
+| `task daily pause <id>` | ルーティーンを一時停止する |
+| `task daily resume <id>` | 一時停止を解除する |
+| `task daily delete <id>` | ルーティーンを削除する |
+| `task daily stats` | 直近7日の達成率を表示する |
+| `task daily reset` | 今日のチェック状態をリセットする |
+
+**表示例 (`task daily list`)**:
+
+```
+[Daily] 2026-03-03
+
+ ID  Status   達成率   Title
+ ─── ──────── ──────── ────────────────────────────────────────
+  1  done      100%    日報を書く
+  2  pending    86%    朝のストレッチ
+  3  pending    57%    読書30分
+```
+
+**表示例 (`task daily stats`)**:
+
+```
+[Daily Stats] 直近7日
+
+ Title          2/25 2/26 2/27 2/28 3/1 3/2 3/3  達成率
+ ────────────── ──── ──── ──── ──── ─── ─── ────  ──────
+ 日報を書く       ✓    ✓    ✓    ✓    ✓   ✓   ✓   100%
+ 朝のストレッチ   ✓    ✓    ✓    ✓    ✓   ✓   -    86%
+```
+
 ---
 
 ### オプション
