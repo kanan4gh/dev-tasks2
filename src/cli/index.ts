@@ -10,9 +10,10 @@ import { registerArchiveCommand } from './commands/archive.js';
 import { registerProjectCommand } from './commands/project.js';
 import { registerMoveCommand } from './commands/move.js';
 import { registerInboxCommand } from './commands/inbox.js';
+import { registerDailyCommand } from './commands/daily.js';
 import { checkUpdate } from '../utils/checkUpdate.js';
 
-const VERSION = '0.4.0';
+const VERSION = '0.5.0';
 
 async function main(): Promise<void> {
   // Commander.js の .version() は同期のみ対応のため、--version を手動ハンドルする
@@ -41,6 +42,7 @@ async function main(): Promise<void> {
   registerProjectCommand(program);
   registerMoveCommand(program);
   registerInboxCommand(program);
+  registerDailyCommand(program);
 
   program.parse(process.argv);
 }

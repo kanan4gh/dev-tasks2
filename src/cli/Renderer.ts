@@ -1,7 +1,8 @@
 import chalk from 'chalk';
 import Table from 'cli-table3';
 import { AppError } from '../types/index.js';
-import type { Task, TaskStatus } from '../types/index.js';
+import type { Task, TaskStatus, RoutineStats } from '../types/index.js';
+import type { RoutineListItem } from '../services/DailyManager.js';
 
 const MAX_TITLE_LENGTH = 40;
 const MAX_BRANCH_LENGTH = 30;
@@ -111,6 +112,85 @@ export class Renderer {
       this.renderTable(group.tasks, displayHeader, group.projectId);
       console.log();
     }
+  }
+
+  renderDailyList(items: RoutineListItem[], today: string): void {
+    console.log(chalk.bold(`[Daily] ${today}`));
+
+    if (items.length === 0) {
+      console.log(chalk.gray('ルーティーンがありません。'));
+      console.log(chalk.gray('  task daily add <title> で登録してください。'));
+      return;
+    }
+
+    const table = new Table({
+      head: [
+        chalk.bold('ID'),
+        chalk.bold('Status'),
+        chalk.bold('達成率'),
+        chalk.bold('Title'),
+      ],
+      colAligns: ['right', 'left', 'right', 'left'],
+      style: { head: [], border: [] },
+    });
+
+    for (const { routine, status, rate } of items) {
+      const statusStr =
+        status === 'done'
+          ? chalk.green('done')
+          : status === 'paused'
+            ? chalk.gray('paused')
+            : chalk.yellow('pending');
+      const rateStr =
+        rate === null ? chalk.gray('-') : `${Math.round(rate * 100)}%`;
+      table.push([
+        routine.id,
+        statusStr,
+        rateStr,
+        truncate(routine.title, MAX_TITLE_LENGTH),
+      ]);
+    }
+
+    console.log(table.toString());
+  }
+
+  renderDailyStats(stats: RoutineStats[], dates: string[]): void {
+    console.log(chalk.bold('[Daily Stats] 直近7日'));
+
+    if (stats.length === 0) {
+      console.log(chalk.gray('ルーティーンがありません。'));
+      return;
+    }
+
+    const dateHeaders = dates.map((d) => {
+      const [, mm, dd] = d.split('-');
+      return `${parseInt(mm, 10)}/${dd}`;
+    });
+
+    const table = new Table({
+      head: [
+        chalk.bold('Title'),
+        ...dateHeaders.map((d) => chalk.bold(d)),
+        chalk.bold('達成率'),
+      ],
+      colAligns: ['left', ...dates.map(() => 'center' as const), 'right'],
+      style: { head: [], border: [] },
+    });
+
+    for (const { routine, weekHistory, rate } of stats) {
+      const histCells = weekHistory.map((h) => {
+        if (h === 'done') return chalk.green('✓');
+        if (h === 'pending') return chalk.gray('-');
+        return chalk.dim('·');
+      });
+      table.push([
+        truncate(routine.title, 20),
+        ...histCells,
+        `${Math.round(rate * 100)}%`,
+      ]);
+    }
+
+    console.log(table.toString());
   }
 
   renderProjectList(

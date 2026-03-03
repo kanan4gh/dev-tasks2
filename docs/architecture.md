@@ -113,6 +113,8 @@ src/
 |-----------|----------|-------------|------|
 | グローバル設定 | `~/.task/config.json` | JSON オブジェクト | どのディレクトリからでも参照できるグローバル配置。activeProject の管理に使用 |
 | タスクデータ | `~/.task/projects/<name>/tasks.json` または `~/.task/inbox/tasks.json` | JSON 配列 | 特別なソフトウェア不要・MVP では十分なパフォーマンス |
+| ルーティーン定義 | `~/.task/daily/routines.json` | JSON 配列 | プロジェクト非依存のグローバルルーティーン管理 |
+| ルーティーン実績ログ | `~/.task/daily/log.json` | JSON 配列（DailyLog[]） | 直近30日分の日別 done/pending 実績。30日超の古いログは自動削除 |
 | プロジェクト別設定（P1） | `~/.task/projects/<name>/config.json` | JSON オブジェクト | パーミッション `600` で GitHub Token を保護 |
 | 作業中タスク ID（P1） | Git リポジトリルートの `.taskcli-current` | プレーンテキスト | Git フック（シェルスクリプト）から読み取るため最小形式。`task start` で書き込み、`task done` で削除 |
 
@@ -120,6 +122,9 @@ src/
 ```
 ~/.task/
 ├── config.json                    # グローバル設定（パーミッション: 644）
+├── daily/
+│   ├── routines.json              # ルーティーン定義（パーミッション: 644）
+│   └── log.json                   # 日別 done/pending 実績（最大30日分、パーミッション: 644）
 ├── inbox/
 │   ├── tasks.json                 # Inbox タスクデータ（パーミッション: 644）
 │   └── tasks.json.bak             # 書き込み中のみ存在するバックアップ

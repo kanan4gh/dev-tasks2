@@ -113,6 +113,32 @@ interface GlobalConfig {
 
 **旧フォーマットとの互換性**: `projects` が `string[]` 形式の場合、`GlobalConfigStorage.load()` 実行時に自動マイグレーションを行う（`{ name, id }` 形式に変換）。変換結果は次回の書き込みコマンド実行時に `config.json` へ永続化される（遅延書き込み）。
 
+### エンティティ: Routine
+
+ルーティーン定義（`~/.task/daily/routines.json`）。プロジェクトに依存しないグローバルな繰り返しタスク。
+
+```typescript
+interface Routine {
+  id: number;        // 自動採番（1始まり、欠番再利用なし）
+  title: string;     // タイトル
+  paused: boolean;   // 一時停止フラグ（true のとき list から非表示）
+  createdAt: string; // ISO 8601（達成率計算の起算日として使用）
+}
+```
+
+### エンティティ: DailyLog
+
+日別の済/未済実績（`~/.task/daily/log.json`）。直近30日分を配列で保持し、古いログは自動削除。
+
+```typescript
+interface DailyLog {
+  date: string;                              // "YYYY-MM-DD"（ローカルタイムゾーン）
+  entries: Record<number, 'pending' | 'done'>; // routineId → 当日の状態
+}
+```
+
+**自動リセット**: `task daily list` / `done` / `reset` 実行時に日付をチェックし、新しい日であれば今日の空ログを自動作成する（昨日以前のログは保持）。
+
 ### エンティティ: ProjectConfig
 
 プロジェクト別設定（`~/.task/projects/<name>/config.json`）。※ P1 で利用する GitHub 連携設定。
@@ -209,6 +235,19 @@ class CLI {
 | `task project remove <name>` | — | プロジェクト削除（確認プロンプト付き） |
 | `task move <id> <project>` | — | タスクを別プロジェクト（または `inbox`）に移動 |
 | `task inbox` | — | アクティブプロジェクトを解除し Inbox モードに切り替え |
+
+**ルーティーン管理（P0: v1.0 追加実装）**:
+
+| コマンド | 引数 / オプション | 処理概要 |
+|---------|----------------|---------|
+| `task daily add <title>` | — | ルーティーンを登録する |
+| `task daily list` | `--all`（一時停止中も表示） | 今日のルーティーン一覧を表示（達成率高い順、paused は末尾） |
+| `task daily done <id>` | — | ルーティーンを済にする |
+| `task daily pause <id>` | — | ルーティーンを一時停止する（`list` から非表示） |
+| `task daily resume <id>` | — | 一時停止を解除する |
+| `task daily delete <id>` | — | ルーティーンを削除する（実績ログも削除） |
+| `task daily stats` | — | 直近7日の日別達成率テーブルを表示する |
+| `task daily reset` | — | 今日のチェック状態を手動リセットする（確認プロンプト付き） |
 
 **サブコマンド一覧（P1: v1.1）**:
 
