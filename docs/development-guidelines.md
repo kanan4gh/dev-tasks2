@@ -738,11 +738,19 @@ task --version にアップデート通知  → 1.1.0 → 1.2.0
 
 ### リリース手順
 
+**マージ前:**
+
 1. README.md がリリース内容を反映していることを確認する
 2. `package.json` の `version` を更新する
 3. `src/cli/index.ts` の `.version()` を同じバージョンに更新する
 4. `main` ブランチにマージする
-5. GitHub Releases でタグ（例: `v1.1.0`）を作成し、変更内容を記載する
+
+**マージ後（必須）:**
+
+5. 関連する GitHub Issues がクローズされていることを確認する
+   - クローズされていない場合は `gh issue close <番号> --comment "<理由>"` でクローズする
+6. GitHub Releases でタグ（例: `v1.1.0`）を作成し、変更内容を記載する
+   - `gh release create v1.1.0 --title "v1.1.0" --notes "<変更内容>"` で作成する
 
 ---
 
