@@ -245,6 +245,7 @@ class CLI {
 | `task daily done <id>` | — | ルーティーンを済にする |
 | `task daily pause <id>` | — | ルーティーンを一時停止する（`list` から非表示） |
 | `task daily resume <id>` | — | 一時停止を解除する |
+| `task daily resume --all` | — | 一時停止中の全ルーティーンを一括で再開する |
 | `task daily delete <id>` | — | ルーティーンを削除する（実績ログも削除） |
 | `task daily stats` | — | 直近7日の日別達成率テーブルを表示する |
 | `task daily reset` | — | 今日のチェック状態を手動リセットする（確認プロンプト付き） |

@@ -95,13 +95,30 @@ export function registerDailyCommand(program: Command): void {
     });
 
   daily
-    .command('resume <id>')
-    .description('ルーティーンの一時停止を解除する')
-    .action((idStr: string) => {
+    .command('resume [id]')
+    .description('ルーティーンの一時停止を解除する（--all で一括解除）')
+    .option('--all', '一時停止中の全ルーティーンを一括で再開する')
+    .action((idStr: string | undefined, options: { all?: boolean }) => {
       const renderer = new Renderer();
       try {
-        const id = parseDailyId(idStr);
         const manager = createManager();
+        if (options.all) {
+          const count = manager.resumeAllRoutines();
+          if (count === 0) {
+            console.log('一時停止中のルーティーンはありません');
+          } else {
+            renderer.renderSuccess(`${count} 件のルーティーンを再開しました`);
+          }
+          return;
+        }
+        if (!idStr) {
+          throw new AppError(
+            'ID または --all を指定してください',
+            'ID も --all も指定されていません',
+            'task daily resume <id> または task daily resume --all を使用してください'
+          );
+        }
+        const id = parseDailyId(idStr);
         manager.resumeRoutine(id);
         renderer.renderSuccess(`ID: ${id} の一時停止を解除しました`);
       } catch (error) {

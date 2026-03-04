@@ -118,6 +118,31 @@ describe('DailyManager', () => {
     });
   });
 
+  describe('resumeAllRoutines()', () => {
+    it('pause 中の全ルーティーンを resume し件数を返す', () => {
+      manager.addRoutine('読書');
+      manager.addRoutine('運動');
+      manager.addRoutine('料理');
+      manager.pauseRoutine(1);
+      manager.pauseRoutine(3);
+
+      const count = manager.resumeAllRoutines();
+
+      expect(count).toBe(2);
+      const routines = storage.loadRoutines();
+      expect(routines.every((r) => !r.paused)).toBe(true);
+    });
+
+    it('pause 中が 0 件の場合は 0 を返す', () => {
+      manager.addRoutine('読書');
+      manager.addRoutine('運動');
+
+      const count = manager.resumeAllRoutines();
+
+      expect(count).toBe(0);
+    });
+  });
+
   describe('deleteRoutine()', () => {
     it('ルーティーンを削除できる', () => {
       manager.addRoutine('削除対象');

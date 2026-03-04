@@ -151,6 +151,17 @@ export class DailyManager {
     this.storage.saveRoutines(routines);
   }
 
+  resumeAllRoutines(): number {
+    const routines = this.storage.loadRoutines();
+    const count = routines.filter((r) => r.paused).length;
+    if (count === 0) return 0;
+    const updated = routines.map((r) =>
+      r.paused ? { ...r, paused: false } : r
+    );
+    this.storage.saveRoutines(updated);
+    return count;
+  }
+
   resumeRoutine(id: number): void {
     const routines = this.storage.loadRoutines();
     const index = routines.findIndex((r) => r.id === id);
