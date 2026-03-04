@@ -16,7 +16,10 @@
 3. **実装**: tasklist.mdに従って実装し、進捗を随時更新
 4. **検証**: テストと動作確認
 5. **更新**: 必要に応じてドキュメント更新
-6. **リリース後**: PR マージ後は以下を必ず実施する
+6. **リリース前**: 新バージョンをリリースする場合、PR に含める形で以下を必ず更新する
+   - `package.json` の `"version"` フィールド
+   - `src/cli/index.ts` の `VERSION` 定数
+7. **リリース後**: PR マージ後は以下を必ず実施する
    - 関連 GitHub Issues がクローズされているか確認（未クローズなら `gh issue close` で実施）
    - GitHub Releases でタグを作成（`gh release create`）
 

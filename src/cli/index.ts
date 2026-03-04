@@ -14,7 +14,7 @@ import { registerDailyCommand } from './commands/daily.js';
 import { registerTimeCommand } from './commands/time.js';
 import { checkUpdate } from '../utils/checkUpdate.js';
 
-const VERSION = '0.5.0';
+const VERSION = '0.6.1';
 
 async function main(): Promise<void> {
   // Commander.js の .version() は同期のみ対応のため、--version を手動ハンドルする
