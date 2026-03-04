@@ -11,6 +11,7 @@ import { registerProjectCommand } from './commands/project.js';
 import { registerMoveCommand } from './commands/move.js';
 import { registerInboxCommand } from './commands/inbox.js';
 import { registerDailyCommand } from './commands/daily.js';
+import { registerTimeCommand } from './commands/time.js';
 import { checkUpdate } from '../utils/checkUpdate.js';
 
 const VERSION = '0.5.0';
@@ -43,6 +44,7 @@ async function main(): Promise<void> {
   registerMoveCommand(program);
   registerInboxCommand(program);
   registerDailyCommand(program);
+  registerTimeCommand(program);
 
   program.parse(process.argv);
 }
