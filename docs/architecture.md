@@ -43,20 +43,27 @@
 
 ## アーキテクチャパターン
 
-### レイヤードアーキテクチャ
+### Clean Architecture に基づくレイヤー構成
+
+本プロジェクトは Clean Architecture の考え方を参考に、以下の4層で構成する。
 
 ```
 ┌───────────────────────────────┐
-│   CLI レイヤー                 │ ← ユーザー入力の受付・バリデーション・結果表示
+│   CLI レイヤー                 │ ← 入力受付・バリデーション・結果表示
 │   src/cli/                    │   Commander.js + Renderer
+│   （Interface Adapter）        │
 ├───────────────────────────────┤
-│   サービスレイヤー               │ ← ビジネスロジック
+│   ユースケース層                │ ← ユースケース主導の複数サービス調整
+│   src/usecases/               │   （オーケストレーター）
+│   （Application Service）      │
+├───────────────────────────────┤
+│   サービスレイヤー               │ ← 個別ドメインロジック
 │   src/services/               │   TaskManager / GlobalConfigService
-│                               │   GitService（P1） / GitHubService（P1） / ConfigService（P1）
+│   （Domain Service）           │   DailyManager 等
 ├───────────────────────────────┤
 │   ストレージレイヤー             │ ← データ永続化
 │   src/storage/                │   FileStorage / GlobalConfigStorage
-│                               │   ConfigStorage（P1）
+│   （Infrastructure）           │   DailyStorage 等
 └───────────────────────────────┘
          ↓ 外部依存
 ┌──────────────────┬──────────────────────┐
@@ -64,13 +71,31 @@
 └──────────────────┴──────────────────────┘
 ```
 
+#### ユースケース層とサービスレイヤーの違い
+
+| | ユースケース層 | サービスレイヤー |
+|---|---|---|
+| 役割 | ユーザーの意図を実現するための複数サービスの調整 | 個別ドメインの CRUD・状態管理 |
+| 依存 | サービスレイヤーを横断的に呼び出す | ストレージレイヤーのみ |
+| 例 | `OnboardUseCase`（タスク・ルーティーン・設定を集約） | `TaskManager`、`DailyManager` |
+
+ユースケース層はレイヤの「段階的な抽象化」ではなく、ユースケースごとのオーケストレーターとして機能する。
+
 #### CLIレイヤー（`src/cli/`）
 - **責務**: コマンド解析・引数バリデーション・整形表示
-- **許可される操作**: サービスレイヤーの呼び出し
+- **許可される操作**: ユースケース層またはサービスレイヤーの呼び出し
 - **禁止される操作**: ストレージレイヤーへの直接アクセス・ビジネスロジックの実装
 
+> **既知の問題**: `list.ts` / `project.ts` / `onboard.ts` 等の既存実装では、CLI 層が `FileStorage` を直接 `new` している箇所がある。これは設計上の違反であり、将来的にユースケース層へ移行する際に解消する。
+
+#### ユースケース層（`src/usecases/`）
+- **責務**: 複数のサービスを組み合わせてユースケースを実現する
+- **許可される操作**: サービスレイヤーの呼び出し・ストレージ生成の委譲
+- **禁止される操作**: ターミナル出力・CLIレイヤーへの依存
+- **対象**: 複数サービスを横断する読み取り集約・複合ビジネスフロー
+
 #### サービスレイヤー（`src/services/`）
-- **責務**: ビジネスロジックの実装・Git/GitHub 連携・設定管理
+- **責務**: 個別ドメインのビジネスロジック・Git/GitHub 連携・設定管理
 - **許可される操作**: ストレージレイヤーの呼び出し・外部 API の呼び出し
 - **禁止される操作**: CLIレイヤーへの依存・ターミナル出力
 
@@ -87,18 +112,21 @@ src/
 │   ├── index.ts               # エントリーポイント・Commander.js セットアップ
 │   ├── commands/              # サブコマンド定義（add.ts / list.ts / project.ts ...）
 │   └── Renderer.ts            # ターミナル表示（テーブル・カラー）
+├── usecases/                  # ユースケース層（複数サービス横断の調整）
 ├── services/
 │   ├── TaskManager.ts         # タスク CRUD・ステータス管理
 │   ├── GlobalConfigService.ts # グローバル設定管理（activeProject 等）
+│   ├── DailyManager.ts        # ルーティーン管理・統計計算
 │   ├── GitService.ts          # ブランチ操作・コミットフック（P1）
 │   ├── GitHubService.ts       # Issues 同期・PR 作成（P1）
 │   └── ConfigService.ts       # プロジェクト別設定の読み書き・バリデーション（P1）
 ├── storage/
-│   ├── FileStorage.ts         # tasks.json の読み書き・バックアップ（projects/<name>/ または inbox/ ディレクトリの作成も担当）
-│   ├── GlobalConfigStorage.ts # ~/.task/config.json の読み書き（~/.task/ ルートディレクトリの作成も担当）
+│   ├── FileStorage.ts         # tasks.json の読み書き・バックアップ
+│   ├── GlobalConfigStorage.ts # ~/.task/config.json の読み書き
+│   ├── DailyStorage.ts        # routines.json / log.json の読み書き
 │   └── ConfigStorage.ts       # projects/<name>/config.json の読み書き（P1）
 ├── types/
-│   └── index.ts               # Task / GlobalConfig / ProjectConfig / AppError 等の型定義
+│   └── index.ts               # Task / GlobalConfig / AppError 等の型定義
 └── utils/
     └── slug.ts                # ブランチ名スラッグ変換ユーティリティ（P1）
 ```
