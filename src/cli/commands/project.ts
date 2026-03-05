@@ -1,10 +1,9 @@
 import type { Command } from 'commander';
 import { Renderer } from '../Renderer.js';
 import { GlobalConfigService } from '../../services/GlobalConfigService.js';
-import { TaskManager } from '../../services/TaskManager.js';
-import { FileStorage } from '../../storage/FileStorage.js';
 import { AppError } from '../../types/index.js';
 import { confirm } from '../helpers.js';
+import { ProjectListUseCase } from '../../usecases/ProjectListUseCase.js';
 
 export function registerProjectCommand(program: Command): void {
   const projectCmd = program
@@ -40,31 +39,8 @@ export function registerProjectCommand(program: Command): void {
     .action(() => {
       const renderer = new Renderer();
       try {
-        const configService = new GlobalConfigService();
-        const projects = configService.listProjects();
-        const activeProject = configService.getActiveProject();
-
-        const taskCounts = new Map<
-          string,
-          { total: number; inProgress: number }
-        >();
-        for (const name of projects) {
-          const filePath = configService.getTaskFilePath(name);
-          const storage = new FileStorage(filePath);
-          const manager = new TaskManager(storage);
-          const tasks = manager.listTasks();
-          taskCounts.set(name, {
-            total: tasks.length,
-            inProgress: tasks.filter((t) => t.status === 'in_progress').length,
-          });
-        }
-
-        // inbox のタスク数
-        const inboxPath = configService.getInboxTaskFilePath();
-        const inboxStorage = new FileStorage(inboxPath);
-        const inboxManager = new TaskManager(inboxStorage);
-        const inboxCount = inboxManager.listTasks().length;
-
+        const { projects, activeProject, taskCounts, inboxCount } =
+          new ProjectListUseCase().execute();
         renderer.renderProjectList(
           projects,
           activeProject,

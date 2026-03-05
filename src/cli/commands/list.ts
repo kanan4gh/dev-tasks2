@@ -1,10 +1,8 @@
 import type { Command } from 'commander';
 import { Renderer } from '../Renderer.js';
-import { TaskManager } from '../../services/TaskManager.js';
-import { GlobalConfigService } from '../../services/GlobalConfigService.js';
-import { FileStorage } from '../../storage/FileStorage.js';
 import { AppError } from '../../types/index.js';
-import type { Task, TaskFilter, TaskStatus } from '../../types/index.js';
+import type { TaskFilter, TaskStatus } from '../../types/index.js';
+import { ListTasksUseCase } from '../../usecases/ListTasksUseCase.js';
 
 export function registerListCommand(program: Command): void {
   program
@@ -26,71 +24,27 @@ export function registerListCommand(program: Command): void {
       }) => {
         const renderer = new Renderer();
         try {
-          const configService = new GlobalConfigService();
           const filter: TaskFilter | undefined = options.allStatus
             ? undefined
             : options.status
               ? { status: options.status as TaskStatus }
               : { status: ['open', 'in_progress'] as TaskStatus[] };
 
+          const useCase = new ListTasksUseCase();
+
           if (options.all) {
-            // --all: 全プロジェクト + Inbox を横断表示
-            const activeProject = configService.getActiveProject();
-            const entries = configService.listProjectEntries();
-            const groups: {
-              header: string;
-              tasks: Task[];
-              projectId: number;
-            }[] = [];
-
-            for (const entry of entries) {
-              const filePath = configService.getTaskFilePath(entry.name);
-              const tasks = new TaskManager(
-                new FileStorage(filePath)
-              ).listTasks(filter);
-              if (tasks.length > 0) {
-                groups.push({
-                  header: `[Project: ${entry.name}]`,
-                  tasks,
-                  projectId: entry.id,
-                });
-              }
-            }
-
-            const inboxPath = configService.getInboxTaskFilePath();
-            const inboxTasks = new TaskManager(
-              new FileStorage(inboxPath)
-            ).listTasks(filter);
-            if (inboxTasks.length > 0) {
-              groups.push({
-                header: '[Inbox]',
-                tasks: inboxTasks,
-                projectId: 0,
-              });
-            }
-
+            const { groups, activeProject } = useCase.listAll(filter);
             renderer.renderGroupedTable(groups, activeProject);
             return;
           }
 
-          // 単一プロジェクト / Inbox 表示
-          let activeProject: string | null;
-          let filePath: string;
-
           if (options.inbox) {
-            activeProject = null;
-            filePath = configService.getInboxTaskFilePath();
-          } else {
-            activeProject = configService.getActiveProject();
-            filePath = configService.getTaskFilePath(activeProject);
+            const { tasks, header } = useCase.listInbox(filter);
+            renderer.renderTable(tasks, header);
+            return;
           }
 
-          const storage = new FileStorage(filePath);
-          const manager = new TaskManager(storage);
-          const tasks = manager.listTasks(filter);
-          const header =
-            activeProject === null ? '[Inbox]' : `[Project: ${activeProject}]`;
-
+          const { tasks, header } = useCase.listSingle(filter);
           renderer.renderTable(tasks, header);
         } catch (error) {
           if (error instanceof AppError) {
