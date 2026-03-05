@@ -43,9 +43,71 @@
 
 ## アーキテクチャパターン
 
+### Clean Architecture とは
+
+Robert C. Martin（Uncle Bob）が提唱したソフトウェア設計の考え方。**「変わりやすいもの」と「変わりにくいもの」を分離し、依存の方向を制御する**ことを核心とする。
+
+```
+         外側（変わりやすい）
+  ┌─────────────────────┐
+  │  UI / Framework     │
+  │  ┌───────────────┐  │
+  │  │  Use Cases    │  │
+  │  │  ┌─────────┐  │  │
+  │  │  │ Domain  │  │  │  ← 内側（変わりにくい）
+  │  │  └─────────┘  │  │
+  │  └───────────────┘  │
+  └─────────────────────┘
+```
+
+**依存は必ず外→内の方向のみ。内側は外側を知らない。**
+
+| 変わりやすい（外側） | 変わりにくい（内側） |
+|---|---|
+| ファイル保存 → SQLite 移行 | タスクのステータス遷移ルール |
+| CLI → Web UI への変更 | 「in_progress は completed になれる」 |
+| GitHub → GitLab 移行 | タスクの優先度の概念 |
+
+#### なぜ Clean Architecture を採用するか
+
+- **テスタビリティ**: 内側のロジックは外側（ファイルシステム・CLI）に依存しないため、単体テストが書きやすい
+- **差し替え容易性**: `FileStorage` を `SQLiteStorage` に変えても、内側のビジネスロジックは無変更
+- **変更の局所化**: UI や永続化手段が変わっても、ドメインロジックへの影響がない
+
+#### 依存性逆転の原則（DIP）
+
+具体的な実装ではなく**インターフェースに依存する**ことで、依存の方向を逆転させる。
+
+```typescript
+// ❌ Use Case が具体実装に依存（変更に弱い）
+class OnboardUseCase {
+  execute() {
+    const storage = new FileStorage(path); // ← 具体実装を直接知っている
+  }
+}
+
+// ✅ Use Case はインターフェースにのみ依存（差し替え自由）
+interface IStorage {
+  load(): Task[];
+  save(tasks: Task[]): void;
+}
+
+class OnboardUseCase {
+  constructor(private storage: IStorage) {} // ← 抽象に依存
+}
+
+// 外側から具体実装を注入する
+new OnboardUseCase(new FileStorage(path));
+new OnboardUseCase(new SQLiteStorage(db));  // 差し替え自由
+```
+
+本プロジェクトでは `IStorage` インターフェースを `src/types/index.ts` に定義済み。将来の SQLite 移行・テスト時のモック差し替えを意識した設計。
+
+---
+
 ### Clean Architecture に基づくレイヤー構成
 
-本プロジェクトは Clean Architecture の考え方を参考に、以下の4層で構成する。
+本プロジェクトは Clean Architecture の考え方に基づき、以下の4層で構成する。
 
 ```
 ┌───────────────────────────────┐
