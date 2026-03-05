@@ -12,6 +12,7 @@ import { registerMoveCommand } from './commands/move.js';
 import { registerInboxCommand } from './commands/inbox.js';
 import { registerDailyCommand } from './commands/daily.js';
 import { registerTimeCommand } from './commands/time.js';
+import { registerOnboardCommand } from './commands/onboard.js';
 import { checkUpdate } from '../utils/checkUpdate.js';
 
 const VERSION = '0.6.1';
@@ -45,6 +46,7 @@ async function main(): Promise<void> {
   registerInboxCommand(program);
   registerDailyCommand(program);
   registerTimeCommand(program);
+  registerOnboardCommand(program);
 
   program.parse(process.argv);
 }

@@ -3,6 +3,7 @@ import Table from 'cli-table3';
 import { AppError } from '../types/index.js';
 import type { Task, TaskStatus, RoutineStats } from '../types/index.js';
 import type { RoutineListItem } from '../services/DailyManager.js';
+import type { OnboardData, SuggestedTask } from '../usecases/OnboardUseCase.js';
 
 const MAX_TITLE_LENGTH = 40;
 const MAX_BRANCH_LENGTH = 30;
@@ -191,6 +192,73 @@ export class Renderer {
     }
 
     console.log(table.toString());
+  }
+
+  renderOnboard(data: OnboardData): void {
+    const sep = chalk.gray('═'.repeat(40));
+    console.log(sep);
+    console.log(chalk.bold('  Task Onboard'));
+    console.log(sep);
+    console.log();
+
+    // アクティブプロジェクト
+    const projectLabel =
+      data.activeProject === null
+        ? chalk.gray('[Inbox モード]')
+        : chalk.cyan(data.activeProject);
+    console.log(`📋 アクティブプロジェクト: ${projectLabel}`);
+    console.log();
+
+    // 今日の毎日やること
+    const { routineDoneCount, routineTotalCount, pendingRoutineItems } = data;
+    const routineHeader =
+      routineTotalCount === 0
+        ? chalk.bold('📅 今日の毎日やること')
+        : chalk.bold(
+            `📅 今日の毎日やること (${routineDoneCount}/${routineTotalCount} 完了)`
+          );
+    console.log(routineHeader);
+    if (routineTotalCount === 0) {
+      console.log(chalk.gray('  毎日やることが登録されていません。'));
+    } else if (pendingRoutineItems.length === 0) {
+      console.log(chalk.green('  すべて完了しています！'));
+    } else {
+      for (const { routine } of pendingRoutineItems) {
+        console.log(`  ${chalk.yellow('○')} ${routine.title}`);
+      }
+    }
+    console.log();
+
+    // 今とりかかるべきタスク
+    console.log(chalk.bold('📌 今とりかかるべきタスク'));
+    if (data.suggestedTasks.length === 0) {
+      console.log(chalk.gray('  タスクがありません。'));
+    } else {
+      data.suggestedTasks.forEach((task: SuggestedTask, i: number) => {
+        const num = chalk.bold(`${i + 1}.`);
+        const statusStr =
+          task.status === 'in_progress'
+            ? chalk.yellow(`[${task.status}]`)
+            : chalk.white(`[${task.status}]`);
+        const id = task.compositeId.padEnd(5);
+        const title =
+          task.title.length > 30
+            ? task.title.slice(0, 29) + '…'
+            : task.title.padEnd(30);
+        const proj = chalk.gray(`(${task.projectName})`);
+        console.log(`  ${num} ${statusStr} ${id}  ${title}  ${proj}`);
+      });
+    }
+    console.log();
+
+    // 全タスク
+    console.log(chalk.bold('💼 全タスク (open + in_progress)'));
+    console.log();
+    if (data.allGroups.length === 0) {
+      console.log(chalk.gray('  タスクがありません。'));
+    } else {
+      this.renderGroupedTable(data.allGroups, data.activeProject);
+    }
   }
 
   renderProjectList(
