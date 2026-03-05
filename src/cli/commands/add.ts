@@ -1,10 +1,8 @@
 import type { Command } from 'commander';
 import { Renderer } from '../Renderer.js';
-import { TaskManager } from '../../services/TaskManager.js';
-import { FileStorage } from '../../storage/FileStorage.js';
 import { AppError } from '../../types/index.js';
 import type { TaskPriority } from '../../types/index.js';
-import { resolveTaskFilePath } from '../helpers.js';
+import { TaskCrudUseCase } from '../../usecases/TaskCrudUseCase.js';
 
 export function registerAddCommand(program: Command): void {
   program
@@ -15,16 +13,10 @@ export function registerAddCommand(program: Command): void {
       (title: string, options: { description?: string; priority?: string }) => {
         const renderer = new Renderer();
         try {
-          const filePath = resolveTaskFilePath();
-          const storage = new FileStorage(filePath);
-          const manager = new TaskManager(storage);
-
-          const task = manager.createTask({
-            title,
+          const task = new TaskCrudUseCase().addTask(title, {
             description: options.description,
-            priority: (options.priority as TaskPriority) ?? 'medium',
+            priority: options.priority as TaskPriority | undefined,
           });
-
           renderer.renderSuccess(`タスクを作成しました (ID: ${task.id})`);
         } catch (error) {
           if (error instanceof AppError) {

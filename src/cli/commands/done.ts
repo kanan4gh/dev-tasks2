@@ -1,10 +1,8 @@
 import type { Command } from 'commander';
 import { Renderer } from '../Renderer.js';
-import { TaskManager } from '../../services/TaskManager.js';
-import { GlobalConfigService } from '../../services/GlobalConfigService.js';
-import { FileStorage } from '../../storage/FileStorage.js';
 import { AppError } from '../../types/index.js';
-import { parseTaskRef, resolveTaskContext } from '../helpers.js';
+import { parseTaskRef } from '../helpers.js';
+import { TaskCrudUseCase } from '../../usecases/TaskCrudUseCase.js';
 
 export function registerDoneCommand(program: Command): void {
   program
@@ -14,12 +12,7 @@ export function registerDoneCommand(program: Command): void {
       const renderer = new Renderer();
       try {
         const ref = parseTaskRef(idStr);
-        const configService = new GlobalConfigService();
-        const { filePath, localId } = resolveTaskContext(ref, configService);
-        const storage = new FileStorage(filePath);
-        const manager = new TaskManager(storage);
-
-        const task = manager.completeTask(localId);
+        const task = new TaskCrudUseCase().completeTask(ref);
         renderer.renderSuccess(`タスク #${task.id} を完了しました`);
       } catch (error) {
         if (error instanceof AppError) {
