@@ -226,6 +226,58 @@ describe('TaskManager', () => {
     });
   });
 
+  describe('updateTask()', () => {
+    it('タイトルを変更できる', () => {
+      const storage = makeMockStorage([
+        makeTask({ id: 1, title: '旧タイトル' }),
+      ]);
+      const manager = new TaskManager(storage);
+      const task = manager.updateTask(1, { title: '新タイトル' });
+      expect(task.title).toBe('新タイトル');
+    });
+
+    it('優先度を変更できる', () => {
+      const storage = makeMockStorage([
+        makeTask({ id: 1, priority: 'medium' }),
+      ]);
+      const manager = new TaskManager(storage);
+      const task = manager.updateTask(1, { priority: 'high' });
+      expect(task.priority).toBe('high');
+    });
+
+    it('dueDate を設定できる', () => {
+      const storage = makeMockStorage([makeTask({ id: 1 })]);
+      const manager = new TaskManager(storage);
+      const task = manager.updateTask(1, { dueDate: '2026-12-31' });
+      expect(task.dueDate).toBe('2026-12-31');
+    });
+
+    it('dueDate を null で削除できる', () => {
+      const storage = makeMockStorage([
+        makeTask({ id: 1, dueDate: '2026-12-31' }),
+      ]);
+      const manager = new TaskManager(storage);
+      const task = manager.updateTask(1, { dueDate: null });
+      expect(task.dueDate).toBeNull();
+    });
+
+    it('scheduledDate を設定できる', () => {
+      const storage = makeMockStorage([makeTask({ id: 1 })]);
+      const manager = new TaskManager(storage);
+      const task = manager.updateTask(1, { scheduledDate: '2099-01-01' });
+      expect(task.scheduledDate).toBe('2099-01-01');
+    });
+
+    it('scheduledDate を null で削除できる', () => {
+      const storage = makeMockStorage([
+        makeTask({ id: 1, scheduledDate: '2099-01-01' }),
+      ]);
+      const manager = new TaskManager(storage);
+      const task = manager.updateTask(1, { scheduledDate: null });
+      expect(task.scheduledDate).toBeNull();
+    });
+  });
+
   describe('listTasks() scheduledDate フィルタ', () => {
     const future = '2099-12-31';
     const past = '2000-01-01';

@@ -14,6 +14,7 @@ import { registerDailyCommand } from './commands/daily.js';
 import { registerTimeCommand } from './commands/time.js';
 import { registerOnboardCommand } from './commands/onboard.js';
 import { registerScheduleCommand } from './commands/schedule.js';
+import { registerEditCommand } from './commands/edit.js';
 import { checkUpdate } from '../utils/checkUpdate.js';
 
 const VERSION = '0.8.0';
@@ -49,6 +50,7 @@ async function main(): Promise<void> {
   registerTimeCommand(program);
   registerOnboardCommand(program);
   registerScheduleCommand(program);
+  registerEditCommand(program);
 
   program.parse(process.argv);
 }
