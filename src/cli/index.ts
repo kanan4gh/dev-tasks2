@@ -13,9 +13,10 @@ import { registerInboxCommand } from './commands/inbox.js';
 import { registerDailyCommand } from './commands/daily.js';
 import { registerTimeCommand } from './commands/time.js';
 import { registerOnboardCommand } from './commands/onboard.js';
+import { registerScheduleCommand } from './commands/schedule.js';
 import { checkUpdate } from '../utils/checkUpdate.js';
 
-const VERSION = '0.7.0';
+const VERSION = '0.8.0';
 
 async function main(): Promise<void> {
   // Commander.js の .version() は同期のみ対応のため、--version を手動ハンドルする
@@ -47,6 +48,7 @@ async function main(): Promise<void> {
   registerDailyCommand(program);
   registerTimeCommand(program);
   registerOnboardCommand(program);
+  registerScheduleCommand(program);
 
   program.parse(process.argv);
 }

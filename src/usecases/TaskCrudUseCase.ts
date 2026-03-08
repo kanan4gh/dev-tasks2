@@ -14,7 +14,11 @@ export class TaskCrudUseCase {
 
   addTask(
     title: string,
-    options: { description?: string; priority?: TaskPriority }
+    options: {
+      description?: string;
+      priority?: TaskPriority;
+      scheduledDate?: string;
+    }
   ): Task {
     const activeProject = this.configService.getActiveProject();
     const filePath = this.configService.getTaskFilePath(activeProject);
@@ -23,7 +27,16 @@ export class TaskCrudUseCase {
       title,
       description: options.description,
       priority: options.priority ?? 'medium',
+      scheduledDate: options.scheduledDate,
     });
+  }
+
+  setScheduledDate(ref: TaskRef, date: string | null): Task {
+    const { filePath, localId } = this._resolve(ref);
+    return new TaskManager(new FileStorage(filePath)).setScheduledDate(
+      localId,
+      date
+    );
   }
 
   getTask(ref: TaskRef): {

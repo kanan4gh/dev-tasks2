@@ -72,6 +72,11 @@ export class Renderer {
     console.log(`  優先度      : ${task.priority}`);
     console.log(`  ブランチ    : ${task.branch ?? chalk.gray('-')}`);
     console.log(`  期限        : ${task.dueDate ?? chalk.gray('-')}`);
+    const scheduledStr =
+      task.scheduledDate !== null
+        ? chalk.yellow(task.scheduledDate) + chalk.gray(' (解禁日)')
+        : chalk.gray('-');
+    console.log(`  解禁日      : ${scheduledStr}`);
     console.log(`  作成日時    : ${task.createdAt}`);
     console.log(`  更新日時    : ${task.updatedAt}`);
   }
@@ -208,6 +213,27 @@ export class Renderer {
         : chalk.cyan(data.activeProject);
     console.log(`📋 アクティブプロジェクト: ${projectLabel}`);
     console.log();
+
+    // まもなく解禁されるタスク
+    if (data.upcomingScheduled.length > 0) {
+      console.log(chalk.bold('⏰ まもなく解禁されるタスク'));
+      for (const t of data.upcomingScheduled) {
+        const dayLabel =
+          t.daysUntil === 0
+            ? chalk.green('今日')
+            : t.daysUntil === 1
+              ? chalk.yellow('明日')
+              : chalk.yellow(`${t.daysUntil}日後`);
+        const proj = chalk.gray(`(${t.projectName})`);
+        console.log(
+          `  ${dayLabel} [${t.scheduledDate}] ${t.compositeId}  ${t.title}  ${proj}`
+        );
+      }
+      console.log(
+        chalk.gray('  💡 task schedule <ID> --clear で今すぐ解禁できます')
+      );
+      console.log();
+    }
 
     // 今日の毎日やること
     const { routineDoneCount, routineTotalCount, pendingRoutineItems } = data;

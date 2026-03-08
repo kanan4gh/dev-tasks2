@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { buildSuggestedTasks } from '../../../src/usecases/OnboardUseCase.js';
 import type { Task } from '../../../src/types/index.js';
 
-function makeTask(id: number, status: 'open' | 'in_progress'): Task {
+function makeTask(
+  id: number,
+  status: 'open' | 'in_progress',
+  overrides: Partial<Task> = {}
+): Task {
   return {
     id,
     title: `タスク${id}`,
@@ -11,8 +15,10 @@ function makeTask(id: number, status: 'open' | 'in_progress'): Task {
     priority: 'medium',
     branch: null,
     dueDate: null,
+    scheduledDate: null,
     createdAt: '2026-03-05T00:00:00Z',
     updatedAt: '2026-03-05T00:00:00Z',
+    ...overrides,
   };
 }
 
