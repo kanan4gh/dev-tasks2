@@ -48,8 +48,10 @@ export function buildSuggestedTasks(
         }))
     );
 
-  const activeInProgress = filter('in_progress').filter((t) => t.isActive);
-  const activeOpen = filter('open').filter((t) => t.isActive);
+  const activeInProgress = filter('in_progress').filter(
+    (t) => t.isActive && !t.isInbox
+  );
+  const activeOpen = filter('open').filter((t) => t.isActive && !t.isInbox);
   const inboxInProgress = filter('in_progress').filter((t) => t.isInbox);
   const inboxOpen = filter('open').filter((t) => t.isInbox);
   const otherInProgress = filter('in_progress').filter(

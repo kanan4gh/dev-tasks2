@@ -100,6 +100,23 @@ describe('buildSuggestedTasks()', () => {
     expect(result[1].projectName).toBe('Inbox');
   });
 
+  it('Inbox モード (activeProject=null) でタスクが重複しない', () => {
+    // Inbox が isActive: true かつ isInbox: true の両方を持つケース (Issue #24)
+    const result = buildSuggestedTasks([
+      {
+        tasks: [makeTask(1, 'open'), makeTask(2, 'in_progress')],
+        projectName: 'Inbox',
+        projectId: 0,
+        isActive: true,
+        isInbox: true,
+      },
+    ]);
+    // 重複なしで 2 件のみ
+    expect(result).toHaveLength(2);
+    const ids = result.map((t) => t.compositeId);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   it('compositeId が projectId-taskId 形式になる', () => {
     const result = buildSuggestedTasks([
       {
