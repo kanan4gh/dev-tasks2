@@ -288,7 +288,7 @@ export class Renderer {
     }
     console.log();
 
-    // 全タスク（サマリー）
+    // 全タスク（コンパクトリスト）
     console.log(chalk.bold('💼 全タスク (open + in_progress)'));
     if (data.allGroups.length === 0) {
       console.log(chalk.gray('  タスクがありません。'));
@@ -303,13 +303,24 @@ export class Renderer {
             : group.header === '[Inbox]';
         const headerStr = isActive
           ? chalk.green(chalk.bold(group.header))
-          : group.header;
+          : chalk.bold(group.header);
         const countStr = chalk.gray(
           `${group.tasks.length} 件 (in_progress: ${inProgressCount})`
         );
         console.log(`  ${headerStr}  ${countStr}`);
+        for (const task of group.tasks) {
+          const idStr =
+            group.projectId !== undefined
+              ? `${group.projectId}-${task.id}`
+              : String(task.id);
+          const statusStr =
+            task.status === 'in_progress'
+              ? chalk.yellow(`[${task.status}]`)
+              : chalk.gray(`[${task.status}]`);
+          const title = truncate(task.title, 40);
+          console.log(`    • ${chalk.gray(idStr)}  ${statusStr}  ${title}`);
+        }
       }
-      console.log(chalk.gray('  詳細: task list --all'));
     }
   }
 
