@@ -17,7 +17,7 @@ import { registerScheduleCommand } from './commands/schedule.js';
 import { registerEditCommand } from './commands/edit.js';
 import { checkUpdate } from '../utils/checkUpdate.js';
 
-const VERSION = '0.8.0';
+const VERSION = '0.9.0';
 
 async function main(): Promise<void> {
   // Commander.js の .version() は同期のみ対応のため、--version を手動ハンドルする
