@@ -31,6 +31,20 @@ export class TaskCrudUseCase {
     });
   }
 
+  editTask(
+    ref: TaskRef,
+    data: {
+      title?: string;
+      description?: string;
+      priority?: TaskPriority;
+      dueDate?: string | null;
+      scheduledDate?: string | null;
+    }
+  ): Task {
+    const { filePath, localId } = this._resolve(ref);
+    return new TaskManager(new FileStorage(filePath)).updateTask(localId, data);
+  }
+
   setScheduledDate(ref: TaskRef, date: string | null): Task {
     const { filePath, localId } = this._resolve(ref);
     return new TaskManager(new FileStorage(filePath)).setScheduledDate(

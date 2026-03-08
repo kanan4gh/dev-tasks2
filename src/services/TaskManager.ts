@@ -89,8 +89,23 @@ export class TaskManager {
 
   updateTask(
     id: number,
-    data: Partial<Pick<Task, 'title' | 'description' | 'branch'>>
+    data: Partial<
+      Pick<Task, 'title' | 'description' | 'branch' | 'priority'>
+    > & {
+      dueDate?: string | null;
+      scheduledDate?: string | null;
+    }
   ): Task {
+    if (data.title !== undefined) {
+      this.validateTitle(data.title);
+    }
+    if (data.dueDate != null) {
+      this.validateDueDate(data.dueDate);
+    }
+    if (data.scheduledDate != null) {
+      this.validateScheduledDate(data.scheduledDate);
+    }
+
     const tasks = this.storage.load();
     const index = tasks.findIndex((t) => t.id === id);
     if (index === -1) {
