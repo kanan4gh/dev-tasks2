@@ -224,8 +224,11 @@ export class Renderer {
       console.log(chalk.green('  すべて完了しています！'));
     } else {
       for (const { routine } of pendingRoutineItems) {
-        console.log(`  ${chalk.yellow('○')} ${routine.title}`);
+        console.log(
+          `  ${chalk.yellow('○')} ${chalk.gray(`[${routine.id}]`)} ${routine.title}`
+        );
       }
+      console.log(chalk.gray('  💡 task daily done <ID> で完了'));
     }
     console.log();
 
@@ -251,13 +254,36 @@ export class Renderer {
     }
     console.log();
 
-    // 全タスク
-    console.log(chalk.bold('💼 全タスク (open + in_progress)'));
+    // 今とりかかるべきタスクのヒント
+    if (data.suggestedTasks.length > 0) {
+      console.log(
+        chalk.gray('  💡 task start <ID> でタスクを開始、task done <ID> で完了')
+      );
+    }
     console.log();
+
+    // 全タスク（サマリー）
+    console.log(chalk.bold('💼 全タスク (open + in_progress)'));
     if (data.allGroups.length === 0) {
       console.log(chalk.gray('  タスクがありません。'));
     } else {
-      this.renderGroupedTable(data.allGroups, data.activeProject);
+      for (const group of data.allGroups) {
+        const inProgressCount = group.tasks.filter(
+          (t) => t.status === 'in_progress'
+        ).length;
+        const isActive =
+          data.activeProject !== null
+            ? group.header === `[Project: ${data.activeProject}]`
+            : group.header === '[Inbox]';
+        const headerStr = isActive
+          ? chalk.green(chalk.bold(group.header))
+          : group.header;
+        const countStr = chalk.gray(
+          `${group.tasks.length} 件 (in_progress: ${inProgressCount})`
+        );
+        console.log(`  ${headerStr}  ${countStr}`);
+      }
+      console.log(chalk.gray('  詳細: task list --all'));
     }
   }
 
