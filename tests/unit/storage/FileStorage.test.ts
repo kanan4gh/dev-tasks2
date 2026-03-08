@@ -14,6 +14,7 @@ function makeTask(id: number, title: string): Task {
     priority: 'medium',
     branch: null,
     dueDate: null,
+    scheduledDate: null,
     createdAt: '2026-02-27T00:00:00Z',
     updatedAt: '2026-02-27T00:00:00Z',
   };
@@ -68,6 +69,26 @@ describe('FileStorage', () => {
       storage.save([makeTask(1, 'Task')]);
       storage.save([makeTask(2, 'Task 2')]);
       expect(existsSync(`${filePath}.bak`)).toBe(false);
+    });
+
+    it('scheduledDate がない旧データをロードすると null に変換される', () => {
+      // scheduledDate フィールドがない旧形式の JSON
+      const oldFormat = JSON.stringify([
+        {
+          id: 1,
+          title: 'Old task',
+          description: '',
+          status: 'open',
+          priority: 'medium',
+          branch: null,
+          dueDate: null,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
+        },
+      ]);
+      writeFileSync(filePath, oldFormat, 'utf-8');
+      const tasks = storage.load();
+      expect(tasks[0].scheduledDate).toBeNull();
     });
 
     it('ネストしたディレクトリが存在しない場合でも保存できる', () => {

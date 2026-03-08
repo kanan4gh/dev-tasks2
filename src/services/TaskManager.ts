@@ -20,6 +20,9 @@ export class TaskManager {
     if (input.dueDate !== undefined) {
       this.validateDueDate(input.dueDate);
     }
+    if (input.scheduledDate !== undefined) {
+      this.validateScheduledDate(input.scheduledDate);
+    }
 
     const tasks = this.storage.load();
     const id = this.nextId(tasks);
@@ -33,6 +36,7 @@ export class TaskManager {
       priority: input.priority ?? 'medium',
       branch: null,
       dueDate: input.dueDate ?? null,
+      scheduledDate: input.scheduledDate ?? null,
       createdAt: now,
       updatedAt: now,
     };
@@ -54,6 +58,17 @@ export class TaskManager {
     }
     if (filter?.priority !== undefined) {
       result = result.filter((t) => t.priority === filter.priority);
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    if (filter?.onlyScheduled) {
+      result = result.filter(
+        (t) => t.scheduledDate !== null && t.scheduledDate > today
+      );
+    } else if (filter?.excludeScheduled) {
+      result = result.filter(
+        (t) => t.scheduledDate === null || t.scheduledDate <= today
+      );
     }
 
     return result.sort((a, b) => a.id - b.id);
@@ -137,6 +152,17 @@ export class TaskManager {
       );
     }
 
+    if (task.scheduledDate !== null) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (task.scheduledDate > today) {
+        throw new AppError(
+          'このタスクはまだ解禁されていません',
+          `scheduledDate (${task.scheduledDate}) が未来のため着手できません`,
+          `解禁日 (${task.scheduledDate}) 以降に task start を実行してください`
+        );
+      }
+    }
+
     const updated: Task = {
       ...task,
       status: 'in_progress',
@@ -201,6 +227,29 @@ export class TaskManager {
     const updated: Task = {
       ...task,
       status: 'archived',
+      updatedAt: new Date().toISOString(),
+    };
+    tasks[index] = updated;
+    this.storage.save(tasks);
+    return updated;
+  }
+
+  setScheduledDate(id: number, date: string | null): Task {
+    if (date !== null) {
+      this.validateScheduledDate(date);
+    }
+    const tasks = this.storage.load();
+    const index = tasks.findIndex((t) => t.id === id);
+    if (index === -1) {
+      throw new AppError(
+        'タスクが見つかりません',
+        `ID=${id} のタスクは存在しません`,
+        'task list で有効な ID を確認してください'
+      );
+    }
+    const updated: Task = {
+      ...tasks[index],
+      scheduledDate: date,
       updatedAt: new Date().toISOString(),
     };
     tasks[index] = updated;
@@ -289,6 +338,24 @@ export class TaskManager {
       throw new AppError(
         '期限の日付が不正です',
         `"${dueDate}" は存在しない日付です`,
+        '有効な日付を入力してください'
+      );
+    }
+  }
+
+  private validateScheduledDate(scheduledDate: string): void {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledDate)) {
+      throw new AppError(
+        '解禁日の形式が不正です',
+        `"${scheduledDate}" は有効な日付形式ではありません`,
+        'YYYY-MM-DD 形式で入力してください（例: 2026-04-01）'
+      );
+    }
+    const date = new Date(scheduledDate);
+    if (isNaN(date.getTime())) {
+      throw new AppError(
+        '解禁日の日付が不正です',
+        `"${scheduledDate}" は存在しない日付です`,
         '有効な日付を入力してください'
       );
     }

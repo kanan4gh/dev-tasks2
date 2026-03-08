@@ -34,7 +34,13 @@ export class FileStorage implements IStorage {
     }
     try {
       const raw = readFileSync(this.filePath, 'utf-8');
-      return JSON.parse(raw) as Task[];
+      const tasks = JSON.parse(raw) as (Task & {
+        scheduledDate?: string | null;
+      })[];
+      return tasks.map((t) => ({
+        ...t,
+        scheduledDate: t.scheduledDate ?? null,
+      }));
     } catch {
       return [];
     }

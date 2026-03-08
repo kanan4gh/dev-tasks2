@@ -12,6 +12,7 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     priority: 'medium',
     branch: null,
     dueDate: null,
+    scheduledDate: null,
     createdAt: '2026-02-27T00:00:00Z',
     updatedAt: '2026-02-27T00:00:00Z',
     ...overrides,
@@ -222,6 +223,104 @@ describe('TaskManager', () => {
       ]);
       const manager = new TaskManager(storage);
       expect(manager.listTasks()).toHaveLength(3);
+    });
+  });
+
+  describe('listTasks() scheduledDate フィルタ', () => {
+    const future = '2099-12-31';
+    const past = '2000-01-01';
+
+    it('excludeScheduled: true で未来の scheduledDate を持つタスクを除外する', () => {
+      const storage = makeMockStorage([
+        makeTask({ id: 1, scheduledDate: null }),
+        makeTask({ id: 2, scheduledDate: future }),
+        makeTask({ id: 3, scheduledDate: past }),
+      ]);
+      const manager = new TaskManager(storage);
+      const result = manager.listTasks({ excludeScheduled: true });
+      expect(result.map((t) => t.id)).toEqual([1, 3]);
+    });
+
+    it('onlyScheduled: true で未来の scheduledDate を持つタスクのみ返す', () => {
+      const storage = makeMockStorage([
+        makeTask({ id: 1, scheduledDate: null }),
+        makeTask({ id: 2, scheduledDate: future }),
+        makeTask({ id: 3, scheduledDate: past }),
+      ]);
+      const manager = new TaskManager(storage);
+      const result = manager.listTasks({ onlyScheduled: true });
+      expect(result.map((t) => t.id)).toEqual([2]);
+    });
+  });
+
+  describe('startTask() scheduledDate 制限', () => {
+    it('scheduledDate が未来のタスクは開始できない', () => {
+      const storage = makeMockStorage([
+        makeTask({ id: 1, scheduledDate: '2099-12-31' }),
+      ]);
+      const manager = new TaskManager(storage);
+      expect(() => manager.startTask(1)).toThrow(AppError);
+    });
+
+    it('scheduledDate が今日以前のタスクは開始できる', () => {
+      const storage = makeMockStorage([
+        makeTask({ id: 1, scheduledDate: '2000-01-01' }),
+      ]);
+      const manager = new TaskManager(storage);
+      const task = manager.startTask(1);
+      expect(task.status).toBe('in_progress');
+    });
+
+    it('scheduledDate が null のタスクは開始できる', () => {
+      const storage = makeMockStorage([
+        makeTask({ id: 1, scheduledDate: null }),
+      ]);
+      const manager = new TaskManager(storage);
+      const task = manager.startTask(1);
+      expect(task.status).toBe('in_progress');
+    });
+  });
+
+  describe('setScheduledDate()', () => {
+    it('解禁日を設定できる', () => {
+      const storage = makeMockStorage([makeTask({ id: 1 })]);
+      const manager = new TaskManager(storage);
+      const task = manager.setScheduledDate(1, '2099-12-31');
+      expect(task.scheduledDate).toBe('2099-12-31');
+    });
+
+    it('解禁日を null に設定できる（削除）', () => {
+      const storage = makeMockStorage([
+        makeTask({ id: 1, scheduledDate: '2099-12-31' }),
+      ]);
+      const manager = new TaskManager(storage);
+      const task = manager.setScheduledDate(1, null);
+      expect(task.scheduledDate).toBeNull();
+    });
+
+    it('不正な日付形式でエラーになる', () => {
+      const storage = makeMockStorage([makeTask({ id: 1 })]);
+      const manager = new TaskManager(storage);
+      expect(() => manager.setScheduledDate(1, 'invalid')).toThrow(AppError);
+    });
+  });
+
+  describe('createTask() scheduledDate', () => {
+    it('scheduledDate を設定してタスクを作成できる', () => {
+      const storage = makeMockStorage([]);
+      const manager = new TaskManager(storage);
+      const task = manager.createTask({
+        title: 'Test',
+        scheduledDate: '2099-12-31',
+      });
+      expect(task.scheduledDate).toBe('2099-12-31');
+    });
+
+    it('scheduledDate なしの場合は null になる', () => {
+      const storage = makeMockStorage([]);
+      const manager = new TaskManager(storage);
+      const task = manager.createTask({ title: 'Test' });
+      expect(task.scheduledDate).toBeNull();
     });
   });
 

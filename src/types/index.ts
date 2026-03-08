@@ -9,6 +9,7 @@ export interface Task {
   priority: TaskPriority;
   branch: string | null;
   dueDate: string | null;
+  scheduledDate: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -18,11 +19,14 @@ export interface CreateTaskInput {
   description?: string;
   priority?: TaskPriority;
   dueDate?: string;
+  scheduledDate?: string;
 }
 
 export interface TaskFilter {
   status?: TaskStatus | TaskStatus[];
   priority?: TaskPriority;
+  excludeScheduled?: boolean;
+  onlyScheduled?: boolean;
 }
 
 export interface ProjectEntry {
