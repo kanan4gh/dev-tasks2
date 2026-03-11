@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readFileSync } from 'node:fs';
 import { Command } from 'commander';
 import { registerAddCommand } from './commands/add.js';
 import { registerListCommand } from './commands/list.js';
@@ -17,7 +18,10 @@ import { registerScheduleCommand } from './commands/schedule.js';
 import { registerEditCommand } from './commands/edit.js';
 import { checkUpdate } from '../utils/checkUpdate.js';
 
-const VERSION = '0.9.1';
+// package.json を単一の正とし、バージョンを動的に読み込む
+const { version: VERSION } = JSON.parse(
+  readFileSync(new URL('../../package.json', import.meta.url), 'utf-8')
+) as { version: string };
 
 async function main(): Promise<void> {
   // Commander.js の .version() は同期のみ対応のため、--version を手動ハンドルする
