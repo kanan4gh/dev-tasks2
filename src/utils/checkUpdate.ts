@@ -47,7 +47,8 @@ export async function checkUpdate(
 
     return (
       `\n✨ アップデートがあります: ${currentVersion} → ${latestVersion}\n` +
-      `   最新版: ${RELEASES_URL}`
+      `   更新方法: git pull && npm run build\n` +
+      `   詳細: ${RELEASES_URL}`
     );
   } catch {
     return null;
