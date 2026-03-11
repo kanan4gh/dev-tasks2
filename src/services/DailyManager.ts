@@ -45,12 +45,18 @@ export class DailyManager {
    * 直近 n 日分の日付文字列を古い順で返す（今日を含む）。
    */
   private recentDates(days: number): string[] {
-    const today = this.today();
     return Array.from({ length: days }, (_, i) => {
-      const d = new Date(today);
+      const d = new Date();
       d.setDate(d.getDate() - (days - 1 - i));
-      return d.toISOString().slice(0, 10);
+      return this.formatDate(d);
     });
+  }
+
+  private formatDate(d: Date): string {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private calcRate(

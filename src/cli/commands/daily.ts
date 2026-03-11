@@ -51,7 +51,8 @@ export function registerDailyCommand(program: Command): void {
       try {
         const manager = createManager();
         const items = manager.listRoutines(options.all ?? false);
-        const today = new Date().toISOString().slice(0, 10);
+        const d = new Date();
+        const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         renderer.renderDailyList(items, today);
       } catch (error) {
         if (error instanceof AppError) renderer.renderError(error);
@@ -161,7 +162,7 @@ export function registerDailyCommand(program: Command): void {
         const dates = Array.from({ length: 7 }, (_, i) => {
           const d = new Date();
           d.setDate(d.getDate() - (6 - i));
-          return d.toISOString().slice(0, 10);
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         });
         renderer.renderDailyStats(stats, dates);
       } catch (error) {
