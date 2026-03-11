@@ -63,6 +63,21 @@ describe('DailyManager', () => {
       const log = storage.loadLog();
       expect(log.entries[1]).toBe('done'); // done が保持されている
     });
+
+    it('最新ログが未来日の場合はリセットしない（今日のログを上書きしない）', () => {
+      manager.addRoutine('ストレッチ');
+      // 今日のログを done で記録
+      storage.saveLog({ date: '2026-03-03', entries: { 1: 'done' } });
+      // 未来日のログが存在する（例: 別タイムゾーンで作成）
+      storage.saveLog({ date: '2026-03-04', entries: { 1: 'pending' } });
+
+      manager.listRoutines(); // checkAndResetIfNewDay: 未来日 > today → リセットしない
+
+      // 今日のログが all-pending で上書きされていない
+      const logs = storage.loadRecentLogs(7);
+      const todayLog = logs.find((l) => l.date === '2026-03-03');
+      expect(todayLog?.entries[1]).toBe('done');
+    });
   });
 
   describe('markDone()', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync } from 'fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { DailyStorage } from '../../../src/storage/DailyStorage.js';
@@ -108,6 +108,25 @@ describe('DailyStorage', () => {
       expect(logs).toHaveLength(2);
       expect(logs[0].date).toBe('2026-03-03');
       expect(logs[1].date).toBe('2026-03-02');
+    });
+
+    it('ゼロ埋めなし日付（"2026-03-9"）を正規化して正しい順序で返す', () => {
+      // ファイルに直接ゼロ埋めなしの日付を書き込む
+      const logPath = join(tmpDir, 'log.json');
+      writeFileSync(
+        logPath,
+        JSON.stringify([
+          { date: '2026-03-9', entries: { 1: 'done' } },
+          { date: '2026-03-10', entries: { 1: 'pending' } },
+          { date: '2026-03-11', entries: { 1: 'done' } },
+        ])
+      );
+
+      const logs = storage.loadRecentLogs(5);
+      // "2026-03-9" が "2026-03-09" に正規化され、正しく末尾に来る
+      expect(logs[0].date).toBe('2026-03-11');
+      expect(logs[1].date).toBe('2026-03-10');
+      expect(logs[2].date).toBe('2026-03-09');
     });
   });
 

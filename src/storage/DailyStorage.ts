@@ -96,7 +96,13 @@ export class DailyStorage {
       const parsed = JSON.parse(
         readFileSync(this.logPath, 'utf-8')
       ) as DailyLog[];
-      return parsed.sort((a, b) => b.date.localeCompare(a.date));
+      // ゼロ埋めなし日付（例: "2026-03-9"）を正規化してからソートする。
+      // 正規化しないと "2026-03-9" > "2026-03-10" となり並び順が崩れる。
+      const normalized = parsed.map((log) => ({
+        ...log,
+        date: normalizeDate(log.date),
+      }));
+      return normalized.sort((a, b) => b.date.localeCompare(a.date));
     } catch {
       return [];
     }
@@ -117,6 +123,14 @@ function todayStr(): string {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+/** "2026-3-9" → "2026-03-09" のようにゼロ埋め正規化する */
+function normalizeDate(date: string): string {
+  const parts = date.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return date;
+  const [year, month, day] = parts;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 export { DAILY_DIR };

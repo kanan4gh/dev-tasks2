@@ -31,7 +31,7 @@ export class DailyManager {
   private checkAndResetIfNewDay(): void {
     const log = this.storage.loadLog();
     const today = this.today();
-    if (log.date !== today) {
+    if (log.date < today) {
       const routines = this.storage.loadRoutines();
       const entries: Record<number, 'pending' | 'done'> = {};
       for (const r of routines.filter((r) => !r.paused)) {
