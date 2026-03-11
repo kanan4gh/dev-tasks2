@@ -16,11 +16,10 @@
 3. **実装**: tasklist.mdに従って実装し、進捗を随時更新
 4. **検証**: テストと動作確認
 5. **更新**: 必要に応じてドキュメント更新
-6. **リリース前**: 新バージョンをリリースする場合、PR に含める形で以下を必ず更新する
-   - `package.json` の `"version"` フィールド（**これ1ヶ所のみ**。`src/cli/index.ts` は package.json を動的に読むため不要）
-7. **リリース後**: PR マージ後は以下を必ず実施する
-   - 関連 GitHub Issues がクローズされているか確認（未クローズなら `gh issue close` で実施）
-   - GitHub Releases でタグを作成（`gh release create`）
+6. **リリース**: 必ず `npm run release <version>` を使う（バージョン更新・ビルド・テスト・コミット・プッシュ・GitHub Release 作成を一括実行）
+   - 例: `npm run release 0.9.4`
+   - **手動で `package.json` を編集したり `gh release create` を直接呼ばない**
+   - リリース前に関連 GitHub Issues をクローズする（`gh issue close <番号>`）
 
 ### 重要なルール
 
