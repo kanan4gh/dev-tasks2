@@ -47,7 +47,7 @@ export async function checkUpdate(
 
     return (
       `\n✨ アップデートがあります: ${currentVersion} → ${latestVersion}\n` +
-      `   更新方法: git pull && npm run build\n` +
+      `   更新方法: git pull && npm install && npm run build && npm install -g .\n` +
       `   詳細: ${RELEASES_URL}`
     );
   } catch {
