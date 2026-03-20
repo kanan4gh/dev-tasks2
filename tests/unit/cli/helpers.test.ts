@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   parseId,
   parseTaskRef,
+  parseRoutineRef,
   resolveTaskContext,
 } from '../../../src/cli/helpers.js';
 import { AppError } from '../../../src/types/index.js';
@@ -62,6 +63,32 @@ describe('parseTaskRef()', () => {
 
   it('"-1" は AppError をスローする', () => {
     expect(() => parseTaskRef('-1')).toThrow(AppError);
+  });
+});
+
+describe('parseRoutineRef()', () => {
+  it('"r3" → 3', () => {
+    expect(parseRoutineRef('r3')).toBe(3);
+  });
+
+  it('"r10" → 10', () => {
+    expect(parseRoutineRef('r10')).toBe(10);
+  });
+
+  it('"3" → null（r プレフィックスなし）', () => {
+    expect(parseRoutineRef('3')).toBeNull();
+  });
+
+  it('"r0" → null（0 は無効）', () => {
+    expect(parseRoutineRef('r0')).toBeNull();
+  });
+
+  it('"rabc" → null（数値でない）', () => {
+    expect(parseRoutineRef('rabc')).toBeNull();
+  });
+
+  it('"1-3" → null（タスク複合ID形式）', () => {
+    expect(parseRoutineRef('1-3')).toBeNull();
   });
 });
 

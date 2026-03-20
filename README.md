@@ -114,6 +114,7 @@ task done 1
 | `task show <id>` | タスクの詳細を表示する |
 | `task start <id>` | タスクを開始する（`in_progress` に変更） |
 | `task done <id>` | タスクを完了にする（`completed` に変更） |
+| `task done r<id>` | ルーティーンを済にする（例: `task done r3`） |
 | `task archive <id>` | タスクをアーカイブする |
 | `task delete <id>` | タスクを削除する（確認あり） |
 | `task move <id> <プロジェクト名>` | タスクを別プロジェクトに移動する |
@@ -137,7 +138,7 @@ task done 1
 | `task daily add <タイトル>` | ルーティーンを登録する |
 | `task daily list` | 今日のルーティーン一覧を表示する |
 | `task daily list --all` | 一時停止中のルーティーンも含めて表示する |
-| `task daily done <id>` | ルーティーンを済にする |
+| `task daily done <id>` | ルーティーンを済にする（`task done r<id>` でも可） |
 | `task daily pause <id>` | ルーティーンを一時停止する |
 | `task daily resume <id>` | 一時停止を解除する |
 | `task daily delete <id>` | ルーティーンを削除する |

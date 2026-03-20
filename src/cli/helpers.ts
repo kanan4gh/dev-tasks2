@@ -97,6 +97,18 @@ export function resolveListHeader(): string {
 }
 
 /**
+ * ルーティーン ID 文字列 ("r<n>") を解析して数値を返す
+ * "r3" → 3, "r10" → 10
+ * "3" や "rabc" など形式が異なる場合は null を返す
+ */
+export function parseRoutineRef(input: string): number | null {
+  if (!/^r\d+$/.test(input)) return null;
+  const id = parseInt(input.slice(1), 10);
+  if (id <= 0) return null;
+  return id;
+}
+
+/**
  * タスク ID 文字列を正の整数として解析する
  */
 export function parseId(idStr: string): number {

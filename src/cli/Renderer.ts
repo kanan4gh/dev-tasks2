@@ -150,7 +150,7 @@ export class Renderer {
       const rateStr =
         rate === null ? chalk.gray('-') : `${Math.round(rate * 100)}%`;
       table.push([
-        routine.id,
+        `r${routine.id}`,
         statusStr,
         rateStr,
         truncate(routine.title, MAX_TITLE_LENGTH),
@@ -251,10 +251,10 @@ export class Renderer {
     } else {
       for (const { routine } of pendingRoutineItems) {
         console.log(
-          `  ${chalk.yellow('○')} ${chalk.gray(`[${routine.id}]`)} ${routine.title}`
+          `  ${chalk.yellow('○')} ${chalk.gray(`[r${routine.id}]`)} ${routine.title}`
         );
       }
-      console.log(chalk.gray('  💡 task daily done <ID> で完了'));
+      console.log(chalk.gray('  💡 task done r<ID> で完了'));
     }
     console.log();
 

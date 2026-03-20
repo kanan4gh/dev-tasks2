@@ -10,12 +10,14 @@ function createManager(): DailyManager {
 }
 
 function parseDailyId(idStr: string): number {
-  const id = parseInt(idStr, 10);
+  // "r3" 形式も受け付ける（後方互換）
+  const normalized = /^r\d+$/.test(idStr) ? idStr.slice(1) : idStr;
+  const id = parseInt(normalized, 10);
   if (isNaN(id) || id <= 0) {
     throw new AppError(
       '無効な ID です',
       `"${idStr}" は有効な ID ではありません`,
-      '正の整数を指定してください'
+      '正の整数または r<ID> 形式で指定してください'
     );
   }
   return id;
