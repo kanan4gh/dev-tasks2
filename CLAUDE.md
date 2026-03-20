@@ -6,6 +6,7 @@
 - Node.js v24.11.0
 - TypeScript 5.x
 - パッケージマネージャー: npm
+- Claude: devcontainer.jsonでfeature指定。npmでバージョン管理。更新はbashエリアスのupdate-claudeで行う。
 
 ## スペック駆動開発の基本原則
 
