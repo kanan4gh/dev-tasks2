@@ -17,7 +17,10 @@
 3. **実装**: tasklist.mdに従って実装し、進捗を随時更新
 4. **検証**: テストと動作確認
 5. **更新**: 必要に応じてドキュメント更新
-6. **リリース**: 必ず `npm run release <version>` を使う（バージョン更新・ビルド・テスト・コミット・プッシュ・GitHub Release 作成を一括実行）
+6. **PR作成・マージ**: フィーチャーブランチから `gh pr create` でPRを作成し、mainにマージ
+   - **機能実装コードを直接 main にコミット・プッシュしない**
+7. **リリース**: PRマージ後、main で `npm run release <version>` を実行（バージョン更新・ビルド・テスト・コミット・プッシュ・GitHub Release 作成を一括実行）
+   - バージョン bump のコミットは `npm run release` が main に直接行う（これは許容）
    - 例: `npm run release 0.9.4`
    - **手動で `package.json` を編集したり `gh release create` を直接呼ばない**
    - リリース前に関連 GitHub Issues をクローズする（`gh issue close <番号>`）
