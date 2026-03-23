@@ -17,6 +17,7 @@ import { registerOnboardCommand } from './commands/onboard.js';
 import { registerScheduleCommand } from './commands/schedule.js';
 import { registerEditCommand } from './commands/edit.js';
 import { registerShellCommand } from './commands/shell.js';
+import { InteractiveShell } from './shell/InteractiveShell.js';
 import { checkUpdate } from '../utils/checkUpdate.js';
 
 // package.json を単一の正とし、バージョンを動的に読み込む
@@ -25,13 +26,19 @@ const { version: VERSION } = JSON.parse(
 ) as { version: string };
 
 async function main(): Promise<void> {
+  // 引数なしの場合はインタラクティブシェルを起動する
+  if (process.argv.length <= 2) {
+    const shell = new InteractiveShell();
+    await shell.run();
+    return;
+  }
+
   // Commander.js の .version() は同期のみ対応のため、--version を手動ハンドルする
   if (process.argv.includes('--version') || process.argv.includes('-V')) {
     console.log(VERSION);
     const notice = await checkUpdate(VERSION);
     if (notice) console.log(notice);
     process.exit(0);
-    return;
   }
 
   const program = new Command();

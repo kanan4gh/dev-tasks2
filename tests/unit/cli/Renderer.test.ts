@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Renderer } from '../../../src/cli/Renderer.js';
 import { AppError } from '../../../src/types/index.js';
 import type { Task } from '../../../src/types/index.js';
+import type { OnboardData } from '../../../src/usecases/OnboardUseCase.js';
 
 function makeTask(overrides: Partial<Task> = {}): Task {
   return {
@@ -27,6 +28,11 @@ describe('Renderer', () => {
     renderer = new Renderer();
     consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    delete process.env['TASK_SHELL_MODE'];
+    vi.restoreAllMocks();
   });
 
   describe('renderTable()', () => {
@@ -222,6 +228,43 @@ describe('Renderer', () => {
       expect(output).toContain('personal');
       expect(output).toContain('3 tasks');
       expect(output).toContain('[Inbox]');
+    });
+  });
+
+  describe('renderOnboard() — シェルモード', () => {
+    const minimalOnboardData: OnboardData = {
+      activeProject: 'my-app',
+      pendingRoutineItems: [],
+      routineDoneCount: 0,
+      routineTotalCount: 0,
+      suggestedTasks: [
+        {
+          compositeId: '1-1',
+          status: 'open',
+          title: 'テストタスク',
+          projectName: 'my-app',
+        },
+      ],
+      allGroups: [],
+      upcomingScheduled: [],
+    };
+
+    it('通常モードでは "task start" / "task done" と表示される', () => {
+      delete process.env['TASK_SHELL_MODE'];
+      renderer.renderOnboard(minimalOnboardData);
+      const output = consoleSpy.mock.calls.flat().join('\n');
+      expect(output).toContain('task start');
+      expect(output).toContain('task done');
+    });
+
+    it('シェルモードでは "start" / "done" と表示される（task プレフィックスなし）', () => {
+      process.env['TASK_SHELL_MODE'] = '1';
+      renderer.renderOnboard(minimalOnboardData);
+      const output = consoleSpy.mock.calls.flat().join('\n');
+      expect(output).not.toContain('task start');
+      expect(output).not.toContain('task done');
+      expect(output).toContain('start <ID>');
+      expect(output).toContain('done <ID>');
     });
   });
 });
