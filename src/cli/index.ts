@@ -16,6 +16,7 @@ import { registerTimeCommand } from './commands/time.js';
 import { registerOnboardCommand } from './commands/onboard.js';
 import { registerScheduleCommand } from './commands/schedule.js';
 import { registerEditCommand } from './commands/edit.js';
+import { registerShellCommand } from './commands/shell.js';
 import { checkUpdate } from '../utils/checkUpdate.js';
 
 // package.json を単一の正とし、バージョンを動的に読み込む
@@ -55,6 +56,7 @@ async function main(): Promise<void> {
   registerOnboardCommand(program);
   registerScheduleCommand(program);
   registerEditCommand(program);
+  registerShellCommand(program);
 
   program.parse(process.argv);
 }
