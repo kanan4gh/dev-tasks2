@@ -200,6 +200,7 @@ export class Renderer {
   }
 
   renderOnboard(data: OnboardData): void {
+    const cmdPrefix = process.env['TASK_SHELL_MODE'] === '1' ? '' : 'task ';
     const sep = chalk.gray('═'.repeat(40));
     console.log(sep);
     console.log(chalk.bold('  Task Onboard'));
@@ -230,7 +231,9 @@ export class Renderer {
         );
       }
       console.log(
-        chalk.gray('  💡 task schedule <ID> --clear で今すぐ解禁できます')
+        chalk.gray(
+          `  💡 ${cmdPrefix}schedule <ID> --clear で今すぐ解禁できます`
+        )
       );
       console.log();
     }
@@ -254,7 +257,7 @@ export class Renderer {
           `  ${chalk.yellow('○')} ${chalk.gray(`[r${routine.id}]`)} ${routine.title}`
         );
       }
-      console.log(chalk.gray('  💡 task done r<ID> で完了'));
+      console.log(chalk.gray(`  💡 ${cmdPrefix}done r<ID> で完了`));
     }
     console.log();
 
@@ -283,7 +286,9 @@ export class Renderer {
     // 今とりかかるべきタスクのヒント
     if (data.suggestedTasks.length > 0) {
       console.log(
-        chalk.gray('  💡 task start <ID> でタスクを開始、task done <ID> で完了')
+        chalk.gray(
+          `  💡 ${cmdPrefix}start <ID> でタスクを開始、${cmdPrefix}done <ID> で完了`
+        )
       );
     }
     console.log();

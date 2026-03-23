@@ -138,6 +138,8 @@ export class InteractiveShell {
   }
 
   async run(): Promise<void> {
+    process.env['TASK_SHELL_MODE'] = '1';
+
     const templateProgram = createShellProgram();
 
     const rl = createInterface({
@@ -146,6 +148,7 @@ export class InteractiveShell {
       completer: buildCompleter(templateProgram),
     });
 
+    await this.runCommand(['onboard']);
     rl.setPrompt(getPrompt(this.configService));
     rl.prompt();
 
@@ -176,6 +179,7 @@ export class InteractiveShell {
       });
 
       rl.on('close', () => {
+        delete process.env['TASK_SHELL_MODE'];
         process.stdout.write('\n');
         resolve();
       });
